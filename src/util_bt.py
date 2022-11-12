@@ -54,10 +54,10 @@ def print_analysis(trades: list, year: int, contents):
 
     # show biggest win and loss
     winners.sort(key= lambda x: x.percent_profit(), reverse=True)
-    # show_trade(winners[0], contents)
+    show_trade(winners[0], contents)
 
     losers.sort(key= lambda x: x.percent_profit())
-    # show_trade(losers[0], contents)
+    show_trade(losers[0], contents)
 
     winners = [win.percent_profit() for win in winners]
 
