@@ -54,7 +54,7 @@ def CE_Backtest():
                             sold=close_,
                             start_i=start_i,
                             end_i=i,
-                            mult=SHORT_MULT
+                            type_=IS_SHORT
                         ))
 
                     inLongPos = True
@@ -71,7 +71,7 @@ def CE_Backtest():
                             sold=close_,
                             start_i=start_i,
                             end_i=i,
-                            mult=LONG_MULT
+                            type_=IS_LONG
                         ))
 
                     inShortPos = True
@@ -81,5 +81,6 @@ def CE_Backtest():
                 prev_ES, prev_EL = curr_ES, curr_EL
                 prev_candle = curr_candle
 
-            print_analysis(trades, year)
-            input()
+            print_analysis(trades, year, contents)
+
+            # input()
