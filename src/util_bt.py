@@ -35,12 +35,13 @@ def oneday_ATR(prev: Candle, curr: Candle):
         (abs(curr.low_  - prev.close_))
     )
     
-def print_analysis(trades: list, year: int, contents, graphs: bool):
+def print_analysis(trades: list, year: int, contents, graphs: bool, strat=None):
     total = sum([
         trade.percent_profit() for trade in trades
     ])
     # total = sum(trades)
 
+    ret = None
     winners, losers = [], []
     for trade in trades:
         # if trade > 0: winners.append(trade)
@@ -55,10 +56,45 @@ def print_analysis(trades: list, year: int, contents, graphs: bool):
     losers.sort(key= lambda x: x.percent_profit())
     if graphs: show_trade(losers[0], contents)
 
+    # Save winners and losers list while they still have trade objects
+    ret = (winners, losers)
+
     winners = [win.percent_profit() for win in winners]
 
     losers = [loss.percent_profit() for loss in losers]
 
+    if strat != None:
+        if year == 2018:
+            with open(f"backtest_results/{strat}/analysis.txt", 'w') as out:
+                out.write(
+f"""
+————{year} Results—————
+Total: {total}
+Num Trades: {len(trades)}\n
+Num Winners: {len(winners)}
+5 Biggest Wins: {winners[0:5]}
+Average Win: {sum(winners)/len(winners)}\n
+Num Losers: {len(losers)}
+5 Biggest Loss: {losers[0:5]}
+Average Loss: {sum(losers)/len(losers)}
+"""
+                )
+        else:
+            with open(f"backtest_results/{strat}/analysis.txt", 'a') as out:
+                out.write(
+f"""
+————{year} Results—————
+Total: {total}
+Num Trades: {len(trades)}\n
+Num Winners: {len(winners)}
+5 Biggest Wins: {winners[0:5]}
+Average Win: {sum(winners)/len(winners)}\n
+Num Losers: {len(losers)}
+5 Biggest Loss: {losers[0:5]}
+Average Loss: {sum(losers)/len(losers)}
+"""
+                )
+            
     print(f"————{year} Results—————")
     print(f"Total: {total}")
     print(f"Num Trades: {len(trades)}\n")
@@ -68,6 +104,28 @@ def print_analysis(trades: list, year: int, contents, graphs: bool):
     print(f"Num Losers: {len(losers)}")
     print(f"5 Biggest Loss: {losers[0:5]}")
     print(f"Average Loss: {sum(losers)/len(losers)}")
+
+    return ret
+
+def analyze_trade_types(winners, losers, year: int, strat=None):
+    long_winners = list(filter(lambda x: x.type_ == IS_LONG, winners))
+    short_winners = list(filter(lambda x: x.type_ == IS_SHORT, winners))
+
+    long_losers = list(filter(lambda x: x.type_ == IS_LONG, losers))
+    short_losers = list(filter(lambda x: x.type_ == IS_SHORT, losers))
+
+    _, ax = plt.subplots(nrows=1, ncols=2)
+
+    ax[0].pie([len(long_winners), len(short_winners)], labels=['Long', 'Short'], autopct='%1.1f%%')
+    ax[0].set_title(f"Winning Trades {year}")
+
+    ax[1].pie([len(long_losers), len(short_losers)], labels=['Long', 'Short'], autopct='%1.1f%%')
+    ax[1].set_title(f"Losing Trades {year}")
+
+    if strat != None:
+        plt.savefig(f"backtest_results/{strat}/{year}-Trade_Type_Analysis.png")
+
+    # plt.show()
 
 def show_trade(trade: Trade, contents):
     print("Type: ", end="")

@@ -96,7 +96,8 @@ def Trend_Follow_Backtest():
                 prev_lEMA, prev_sEMA = curr_lEMA, curr_sEMA
                 prev_deltaEMA = curr_deltaEMA
 
-            print_analysis(trades, year, contents, graphs=True)
+            winners, losers = print_analysis(trades, year, contents, strat="TrendFollow", graphs=False)
+            # analyze_trade_types(winners, losers, year, strat="TrendFollow")
 
             # prices = pd.DataFrame({
             #     "open"  : [candle.open_ for candle in candles],

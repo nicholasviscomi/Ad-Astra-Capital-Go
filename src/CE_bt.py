@@ -81,6 +81,5 @@ def CE_Backtest():
                 prev_ES, prev_EL = curr_ES, curr_EL
                 prev_candle = curr_candle
 
-            print_analysis(trades, year, contents, graphs=False)
-
-            # input()
+            winners, losers = print_analysis(trades, year, contents, graphs=False, strat="CE")
+            # analyze_trade_types(winners, losers, year, "CE")

@@ -3,6 +3,10 @@
         --> (calculate all profit the same and multiply by -1 for short)
 [x] graph the winning and losing trades to ensure things are working correctly
 
+[ ] create pie charts of what type of trades the winners and losers are 
+    --> then look out whether the market was bearish or bullish to see if there is a correlation????
+[ ] add option to only long/short/bought
+
 [ ] Add in stop loss and take profit thresholds
 [ ] Once a certain profit threshold is hit, add a stop loss in the profit zone
     --> Maybe only add in a stop loss, because the strategy continually finds insane profits but needs to back out of trades earlier
