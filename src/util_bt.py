@@ -15,8 +15,8 @@ class Candle:
     close_ : float
 
 
-IS_SHORT = -1
-IS_LONG  =  1
+IS_SHORT =  1
+IS_LONG  = -1
 @dataclass
 class Trade:
     bought  : float
@@ -26,11 +26,7 @@ class Trade:
     type_    : int # -1 if shorting so profit calculations are correct
 
     def percent_profit(self):
-        if   self.type_ == IS_LONG:
-            return ((self.sold / self.bought) - 1) * 100
-        elif self.type_ == IS_SHORT:
-            return ((self.bought / self.sold) - 1) * 100
-
+        return (self.bought - self.sold)/self.bought * 100 * self.type_
 
 def oneday_ATR(prev: Candle, curr: Candle):
     return max(
@@ -39,7 +35,7 @@ def oneday_ATR(prev: Candle, curr: Candle):
         (abs(curr.low_  - prev.close_))
     )
     
-def print_analysis(trades: list, year: int, contents):
+def print_analysis(trades: list, year: int, contents, graphs: bool):
     total = sum([
         trade.percent_profit() for trade in trades
     ])
@@ -54,10 +50,10 @@ def print_analysis(trades: list, year: int, contents):
 
     # show biggest win and loss
     winners.sort(key= lambda x: x.percent_profit(), reverse=True)
-    show_trade(winners[0], contents)
+    if graphs: show_trade(winners[0], contents)
 
     losers.sort(key= lambda x: x.percent_profit())
-    show_trade(losers[0], contents)
+    if graphs: show_trade(losers[0], contents)
 
     winners = [win.percent_profit() for win in winners]
 

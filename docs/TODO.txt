@@ -1,10 +1,11 @@
-[ ] Make a trade object with the bought & sell price, start & end index in the file, and whether it's short or long.
+[x] Make a trade object with the bought & sell price, start & end index in the file, and whether it's short or long.
     It should prolly just be a -1 multiplier for doing calculations 
         --> (calculate all profit the same and multiply by -1 for short)
+[x] graph the winning and losing trades to ensure things are working correctly
 
-[ ] graph the winning and losing trades to ensure things are working correctly
 [ ] Add in stop loss and take profit thresholds
 [ ] Once a certain profit threshold is hit, add a stop loss in the profit zone
+    --> Maybe only add in a stop loss, because the strategy continually finds insane profits but needs to back out of trades earlier
 
 [ ] try targetting only a certain amount of loss
     - there is almost always way more losing trades, so try and get out at a good time
