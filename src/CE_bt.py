@@ -25,8 +25,8 @@ def CE_Backtest(show_graphs: bool, save_fig: bool, save_analysis: bool):
             for i in range(year_ranges[year][0], year_ranges[year][1], -1):
                 # loop through contents starting at the end
                 line = contents[i]
-                open_, high_, low_, close_ = float(line[3]), float(line[4]), float(line[5]), float(line[6])
-                curr_candle = Candle(open_, high_, low_, close_)
+                date, open_, high_, low_, close_ = line[1], float(line[3]), float(line[4]), float(line[5]), float(line[6])
+                curr_candle = Candle(date, open_, high_, low_, close_)
 
                 if prev_candle == None:
                     prev_candle = curr_candle
@@ -121,12 +121,6 @@ def CE_Backtest(show_graphs: bool, save_fig: bool, save_analysis: bool):
             if save_analysis: strat = "CE"
             winners, losers = print_analysis(trades, year, contents, show_graphs, strat)
             
-            # if save_fig: strat = "CE"
-            # else: strat = None # Need this line to ensure that strat goes back to None if !save_fig
-            # analyze_trade_types(winners, losers, year, strat)
-
-            losers = losers[::-1]
-            for i in range(10):
-                # show_trade(winners[i], contents, zoom=10)
-                show_trade(losers[i], contents, zoom=10)
-            
+            if save_fig: strat = "CE"
+            else: strat = None # Need this line to ensure that strat goes back to None if !save_fig
+            analyze_trade_types(winners, losers, year, strat)            

@@ -9,6 +9,7 @@ one_min_data_path = 'historical_data/Bitstamp_BTCUSD_2021_minute.csv'
 
 @dataclass
 class Candle:
+    date   : str
     open_  : float
     high_  : float
     low_   : float
@@ -68,47 +69,45 @@ def print_analysis(trades: list, year: int, contents, show_graphs: bool, strat=N
 
     losers = [loss.percent_profit() for loss in losers]
 
+    longs = list(filter(lambda x: x.type_ == IS_LONG, trades))
+    longs_total = sum([
+        trade.percent_profit() for trade in longs
+    ])
+
+    shorts = list(filter(lambda x: x.type_ == IS_SHORT, trades))
+    shorts_total = sum([
+        trade.percent_profit() for trade in shorts
+    ])
+
+    content = f"""
+————{year} Results—————
+Total: {total}
+Num Trades: {len(trades)}
+
+Long Total: {longs_total}
+Num longs: {len(longs)}
+
+Short Total: {shorts_total}
+Num shorts: {len(shorts)}
+
+Num Winners: {len(winners)}
+5 Biggest Wins: {winners[0:5]}
+Average Win: {sum(winners)/len(winners)}
+
+Num Losers: {len(losers)}
+5 Biggest Loss: {losers[0:5]}
+Average Loss: {sum(losers)/len(losers)}
+"""
+
     if strat != None:
         if year == 2018:
             with open(f"backtest_results/{strat}/analysis.txt", 'w') as out:
-                out.write(
-f"""
-————{year} Results—————
-Total: {total}
-Num Trades: {len(trades)}\n
-Num Winners: {len(winners)}
-5 Biggest Wins: {winners[0:5]}
-Average Win: {sum(winners)/len(winners)}\n
-Num Losers: {len(losers)}
-5 Biggest Loss: {losers[0:5]}
-Average Loss: {sum(losers)/len(losers)}
-"""
-                )
+                out.write(content)
         else:
             with open(f"backtest_results/{strat}/analysis.txt", 'a') as out:
-                out.write(
-f"""
-————{year} Results—————
-Total: {total}
-Num Trades: {len(trades)}\n
-Num Winners: {len(winners)}
-5 Biggest Wins: {winners[0:5]}
-Average Win: {sum(winners)/len(winners)}\n
-Num Losers: {len(losers)}
-5 Biggest Loss: {losers[0:5]}
-Average Loss: {sum(losers)/len(losers)}
-"""
-                )
+                out.write(content)
             
-    print(f"————{year} Results—————")
-    print(f"Total: {total}")
-    print(f"Num Trades: {len(trades)}\n")
-    print(f"Num Winners: {len(winners)}")
-    print(f"5 Biggest Wins: {winners[0:5]}")
-    print(f"Average Win: {sum(winners)/len(winners)}\n")
-    print(f"Num Losers: {len(losers)}")
-    print(f"5 Biggest Loss: {losers[0:5]}")
-    print(f"Average Loss: {sum(losers)/len(losers)}")
+    print(content)
 
     return ret
 
@@ -143,8 +142,8 @@ def show_trade(trade: Trade, contents, zoom: int = 5,):
     candles = []
     for i in range(trade.start_i + zoom, trade.end_i - zoom, -1):
         line = contents[i]
-        open_, high_, low_, close_ = float(line[3]), float(line[4]), float(line[5]), float(line[6])
-        candles.append(Candle(open_, high_, low_, close_))
+        date, open_, high_, low_, close_ = line[1], float(line[3]), float(line[4]), float(line[5]), float(line[6])
+        candles.append(Candle(date, open_, high_, low_, close_))
 
     prices = pd.DataFrame({
         "high"  : [candle.high_  for candle in candles],
@@ -195,9 +194,9 @@ def show_trade(trade: Trade, contents, zoom: int = 5,):
     plt.show()
 
 year_ranges = {
-    # 2018: (39379, 33843),
-    # 2019: (33842, 25083),
-    # 2020: (25082, 16299),
-    # 2021: (16298, 7539),
+    2018: (39379, 33843),
+    2019: (33842, 25083),
+    2020: (25082, 16299),
+    2021: (16298, 7539),
     2022: (7538, 0)
 }

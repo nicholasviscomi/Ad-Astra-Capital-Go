@@ -34,8 +34,8 @@ def Trend_Follow_Backtest(show_graphs: bool, save_fig: bool, save_analysis: bool
             for i in range(year_ranges[year][0], year_ranges[year][1], -1):
                 # loop through contents starting at the end
                 line = contents[i]
-                open_, high_, low_, close_ = float(line[3]), float(line[4]), float(line[5]), float(line[6])
-                curr_candle = Candle(open_, high_, low_, close_)
+                date, open_, high_, low_, close_ = line[1], float(line[3]), float(line[4]), float(line[5]), float(line[6])
+                curr_candle = Candle(date, open_, high_, low_, close_)
 
                 if len(moving_pts) < lEMA_len: 
                     # need enough points for long EMA (guarantees enough for short EMA)
