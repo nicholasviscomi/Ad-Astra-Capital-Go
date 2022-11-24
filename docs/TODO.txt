@@ -3,19 +3,23 @@
         --> (calculate all profit the same and multiply by -1 for short)
 [x] graph the winning and losing trades to ensure things are working correctly
 
-[ ] create pie charts of what type of trades the winners and losers are 
+[x] create pie charts of what type of trades the winners and losers are 
     --> then look out whether the market was bearish or bullish to see if there is a correlation????
-[ ] add option to only long/short/bought
 
-[ ] Add in stop loss and take profit thresholds
-[ ] Once a certain profit threshold is hit, add a stop loss in the profit zone
-    --> Maybe only add in a stop loss, because the strategy continually finds insane profits but needs to back out of trades earlier
+Things to test:
+    [ ] analyze results if only going long/short
+    [ ] Look at the time of day when the losing trades are
+        --> Lack of volatility is terrible for profit, so don't trade at 2am or something like that bro
+    [ ] Loop through different combinations of ema lengths
+        --> O(n^2) so don't do too many
+    [ ] Loop through different CE_MULTIPLIERs
+    [ ] Loop through different stop loss thresholds
 
-[ ] try targetting only a certain amount of loss
-    - there is almost always way more losing trades, so try and get out at a good time
-      so the big trades can really win
-        --> Do some analysis and find the point of no return for profit. At what % of loss is there 
-            statistically no more reasonable hope of it turning to profit again?
-    [ ] make it easy to change reward to risk ratio
+CE Strat Problems:
+    [ ] When I open a trade with CE strat, if the next candle is in the wrong direction by about 40% of
+        the previous candle it's usually a big loss
+    --- Almost double the amount of losing trades compared to winning ones
+    [ ] Don't trade when theres no volume
 
-[ ] loop through different combinations of EMAs to see the best length
+[ ] Should I just append the csv file with a ton of indicators I calculate?
+    ??? Could then sell this data on reddit for cheap or something

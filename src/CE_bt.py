@@ -1,7 +1,7 @@
 import csv
 from util_bt import *
 
-def CE_Backtest():
+def CE_Backtest(show_graphs: bool, save_fig: bool, save_analysis: bool):
     """
     Test the chandeleir exit strategy with ATR length = 1, multiplier = 1.85
     """
@@ -42,8 +42,44 @@ def CE_Backtest():
                 if prev_candle.close_ < prev_ES:
                     curr_ES = min(curr_ES, prev_ES)
 
-                ##########################################################################
-                # TRADING LOGIC HERE
+                ##########################################################################################################
+                # STOP LOSS
+                ##########################################################################################################
+                if inLongPos:
+                    mock_trade = Trade(
+                        bought=longPosPrice,
+                        sold=close_,
+                        start_i=start_i,
+                        end_i=i,
+                        type_=IS_LONG
+                    )
+                    if mock_trade.percent_profit() < -3:
+                        # already lost enough, exit now
+                        trades.append(mock_trade)
+                        inLongPos = False
+                        prev_ES, prev_EL = curr_ES, curr_EL
+                        prev_candle = curr_candle
+                        continue
+
+                if inShortPos:
+                    mock_trade = Trade(
+                        bought=shortPosPrice,
+                        sold=close_,
+                        start_i=start_i,
+                        end_i=i,
+                        type_=IS_SHORT
+                    )
+                    if mock_trade.percent_profit() < -3:
+                        # already lost enough, exit now
+                        trades.append(mock_trade)
+                        inShortPos = False
+                        prev_ES, prev_EL = curr_ES, curr_EL
+                        prev_candle = curr_candle
+                        continue
+
+                ##########################################################################################################
+                # TRADING LOGIC
+                ##########################################################################################################
                 if not inLongPos and close_ > prev_ES:
                     # exit long FIRST then long bitcoin
                     if inShortPos: 
@@ -81,5 +117,16 @@ def CE_Backtest():
                 prev_ES, prev_EL = curr_ES, curr_EL
                 prev_candle = curr_candle
 
-            winners, losers = print_analysis(trades, year, contents, graphs=False, strat="CE")
-            # analyze_trade_types(winners, losers, year, "CE")
+            strat = None
+            if save_analysis: strat = "CE"
+            winners, losers = print_analysis(trades, year, contents, show_graphs, strat)
+            
+            # if save_fig: strat = "CE"
+            # else: strat = None # Need this line to ensure that strat goes back to None if !save_fig
+            # analyze_trade_types(winners, losers, year, strat)
+
+            losers = losers[::-1]
+            for i in range(10):
+                # show_trade(winners[i], contents, zoom=10)
+                show_trade(losers[i], contents, zoom=10)
+            

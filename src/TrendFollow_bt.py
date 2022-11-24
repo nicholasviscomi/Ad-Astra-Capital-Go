@@ -5,7 +5,7 @@ import pandas as pd
 
 SMOOTHING = 2
 
-def Trend_Follow_Backtest():
+def Trend_Follow_Backtest(show_graphs: bool, save_fig: bool, save_analysis: bool):
     """
     Test a simple EMA trend following strategy.
     When a shorter moving average crosses up a longer one, an uptrend should be starting. 
@@ -48,7 +48,7 @@ def Trend_Follow_Backtest():
                     short_EMA_pts = moving_pts[14:]
                     prev_sEMA = sum(short_EMA_pts)/sEMA_len
 
-                assert prev_sEMA != -1 and prev_lEMA != -1
+                assert prev_sEMA != -1 or prev_lEMA != -1
 
                 curr_lEMA = (close_ * (SMOOTHING / (1 + lEMA_len))) + prev_lEMA * (1 - (SMOOTHING / (1 + lEMA_len)))
                 curr_sEMA = (close_ * (SMOOTHING / (1 + sEMA_len))) + prev_sEMA * (1 - (SMOOTHING / (1 + sEMA_len)))
@@ -57,6 +57,45 @@ def Trend_Follow_Backtest():
                  # if this < 1 and it used to be > 1, sEMA just crossed down lEMA  --> go short, exit long
                 curr_deltaEMA = curr_sEMA / curr_lEMA
 
+                ##########################################################################################################
+                # STOP LOSS
+                ##########################################################################################################
+
+                if inLongPos:
+                    mock_trade = Trade(
+                        bought=longPosPrice,
+                        sold=close_,
+                        start_i=start_i,
+                        end_i=i,
+                        type_=IS_LONG
+                    )
+                    if mock_trade.percent_profit() < -3:
+                        # already lost enough, exit now
+                        trades.append(mock_trade)
+                        inLongPos = False
+                        prev_lEMA, prev_sEMA = curr_lEMA, curr_sEMA
+                        prev_deltaEMA = curr_deltaEMA
+                        continue
+
+                if inShortPos:
+                    mock_trade = Trade(
+                        bought=shortPosPrice,
+                        sold=close_,
+                        start_i=start_i,
+                        end_i=i,
+                        type_=IS_SHORT
+                    )
+                    if mock_trade.percent_profit() < -3:
+                        # already lost enough, exit now
+                        trades.append(mock_trade)
+                        inShortPos = False
+                        prev_lEMA, prev_sEMA = curr_lEMA, curr_sEMA
+                        prev_deltaEMA = curr_deltaEMA
+                        continue
+
+                ##########################################################################################################
+                # TRADING LOGIC
+                ##########################################################################################################
                 if not inLongPos and (prev_deltaEMA < 1 and curr_deltaEMA > 1):
                     # close short enter long
                     if inShortPos:
@@ -95,9 +134,20 @@ def Trend_Follow_Backtest():
 
                 prev_lEMA, prev_sEMA = curr_lEMA, curr_sEMA
                 prev_deltaEMA = curr_deltaEMA
+                ##########################################################################################################
+            
+            strat = None
+            if save_analysis: strat = "TrendFollow"
+            winners, losers = print_analysis(trades, year, contents, show_graphs, strat) # returns sorted lists
+            
+            if save_fig: strat = "TrendFollow"
+            else: strat = None # Need this line to ensure that strat goes back to None if !save_fig
+            analyze_trade_types(winners, losers, year, strat)
 
-            winners, losers = print_analysis(trades, year, contents, strat="TrendFollow", graphs=False)
-            # analyze_trade_types(winners, losers, year, strat="TrendFollow")
+
+
+            # for i in range(10):
+            #     show_trade(losers[i], contents, zoom=10)
 
             # prices = pd.DataFrame({
             #     "open"  : [candle.open_ for candle in candles],

@@ -25,8 +25,9 @@ class Trade:
     end_i   : int # index of the end of the trade in the file
     type_    : int # -1 if shorting so profit calculations are correct
 
+    # Kraken has a 0.9% fee per transaction
     def percent_profit(self):
-        return (self.bought - self.sold)/self.bought * 100 * self.type_
+        return ((self.bought - self.sold)/self.bought * 100 * self.type_)
 
 def oneday_ATR(prev: Candle, curr: Candle):
     return max(
@@ -35,7 +36,11 @@ def oneday_ATR(prev: Candle, curr: Candle):
         (abs(curr.low_  - prev.close_))
     )
     
-def print_analysis(trades: list, year: int, contents, graphs: bool, strat=None):
+def print_analysis(trades: list, year: int, contents, show_graphs: bool, strat=None):
+    """
+    Gives a brief analysis of the trades. Can choose to show the graphs and save the output to a file
+    Returns the winners, losers as lists of trade objects 
+    """
     total = sum([
         trade.percent_profit() for trade in trades
     ])
@@ -51,10 +56,10 @@ def print_analysis(trades: list, year: int, contents, graphs: bool, strat=None):
 
     # show biggest win and loss
     winners.sort(key= lambda x: x.percent_profit(), reverse=True)
-    if graphs: show_trade(winners[0], contents)
+    if show_graphs: show_trade(winners[0], contents)
 
     losers.sort(key= lambda x: x.percent_profit())
-    if graphs: show_trade(losers[0], contents)
+    if show_graphs: show_trade(losers[0], contents)
 
     # Save winners and losers list while they still have trade objects
     ret = (winners, losers)
@@ -125,27 +130,30 @@ def analyze_trade_types(winners, losers, year: int, strat=None):
     if strat != None:
         plt.savefig(f"backtest_results/{strat}/{year}-Trade_Type_Analysis.png")
 
+    # ax[0].clear()
+    # ax[1].clear()
     # plt.show()
 
-def show_trade(trade: Trade, contents):
-    print("Type: ", end="")
-    print("long" if trade.type_ == IS_LONG else "short")
-    print(f"Profit: {trade.percent_profit()}")
+def show_trade(trade: Trade, contents, zoom: int = 5,):
+    """
+    Create a matplot of the trade
+    It will show (zoom)-number of candles before and after the trade
+    """
 
     candles = []
-    for i in range(trade.start_i + 5, trade.end_i - 5, -1):
+    for i in range(trade.start_i + zoom, trade.end_i - zoom, -1):
         line = contents[i]
         open_, high_, low_, close_ = float(line[3]), float(line[4]), float(line[5]), float(line[6])
         candles.append(Candle(open_, high_, low_, close_))
 
     prices = pd.DataFrame({
-        "open"  : [candle.open_  for candle in candles],
         "high"  : [candle.high_  for candle in candles],
         "low"   : [candle.low_   for candle in candles],
+        "open"  : [candle.open_  for candle in candles],
         "close" : [candle.close_ for candle in candles]
     })
-    green = prices[prices.close >= prices.open] # green candles
-    red   = prices[prices.close < prices.open] # red candles
+    green  = prices[prices.close >= prices.open] # green candles
+    red    = prices[prices.close < prices.open] # red candles
     w1, w2 = 0.4, 0.04 # width of thick part and width of extrema
 
     _, ax = plt.subplots()
@@ -160,12 +168,12 @@ def show_trade(trade: Trade, contents):
 
     ax.hlines(
         trade.bought,
-        xmin=5, xmax=5 + (trade.start_i - trade.end_i), 
+        xmin=zoom, xmax=zoom + (trade.start_i - trade.end_i), 
         label='bought', color='orange'
     )
     ax.hlines(
         trade.sold, 
-        xmin=5, xmax=5 + (trade.start_i - trade.end_i), 
+        xmin=zoom, xmax=zoom + (trade.start_i - trade.end_i), 
         label='sold', color='purple'
     )
 
@@ -173,7 +181,7 @@ def show_trade(trade: Trade, contents):
     below = trade.sold if trade.sold < trade.bought else trade.bought
     ax.add_patch(
         Rectangle(
-            (5, below), # start at the lowest left corner
+            (zoom, below), # start at the lowest left corner
             trade.start_i - trade.end_i, 
             above - below, 
             alpha=0.5,
@@ -187,9 +195,9 @@ def show_trade(trade: Trade, contents):
     plt.show()
 
 year_ranges = {
-    2018: (39379, 33843),
-    2019: (33842, 25083),
-    2020: (25082, 16299),
-    2021: (16298, 7539),
+    # 2018: (39379, 33843),
+    # 2019: (33842, 25083),
+    # 2020: (25082, 16299),
+    # 2021: (16298, 7539),
     2022: (7538, 0)
 }
