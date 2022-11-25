@@ -1,10 +1,12 @@
 import csv
 from util_bt import *
 
+
 def CE_Backtest(ce_mult: float, atr_len: int, show_graphs: bool, save_fig: bool, save_analysis: bool):
     """
     Test the chandeleir exit strategy with ATR length = 1, multiplier = ce_mult
     """
+    tot_profit = None
     with open(one_hr_data_path, mode='r') as file:
         csv_file = csv.reader(file)
 
@@ -14,8 +16,8 @@ def CE_Backtest(ce_mult: float, atr_len: int, show_graphs: bool, save_fig: bool,
             contents.append(line)
         
         # used to loop through just specific years within the massive data file
-        trades = []
         for year in year_ranges:
+            trades = []
             tot_profit = 0
             prev_candle = None
             prev_EL, prev_ES = 0.0, 0.0
@@ -32,7 +34,7 @@ def CE_Backtest(ce_mult: float, atr_len: int, show_graphs: bool, save_fig: bool,
                     prev_candle = curr_candle
                     continue
 
-                atr = oneday_ATR(prev_candle, curr_candle)
+                atr = true_range(prev_candle, curr_candle)
 
                 curr_EL = curr_candle.close_ - (atr * ce_mult)
                 curr_ES = curr_candle.close_ + (atr * ce_mult)
@@ -119,7 +121,7 @@ def CE_Backtest(ce_mult: float, atr_len: int, show_graphs: bool, save_fig: bool,
 
             strat = None
             if save_analysis: strat = "CE"
-            winners, losers, profit = run_analysis(trades, year, contents, show_graphs, strat, suppress=True)
+            winners, losers, profit = run_analysis(trades, year, contents, show_graphs, strat, suppress=False)
 
             tot_profit += profit
 

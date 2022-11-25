@@ -1,10 +1,11 @@
-[x] Make a trade object with the bought & sell price, start & end index in the file, and whether it's short or long.
-    It should prolly just be a -1 multiplier for doing calculations 
-        --> (calculate all profit the same and multiply by -1 for short)
-[x] graph the winning and losing trades to ensure things are working correctly
-
-[x] create pie charts of what type of trades the winners and losers are 
-    --> then look out whether the market was bearish or bullish to see if there is a correlation????
+BIG PROBLEM:
+*******
+[x] when I run the backtests on individual years, I get a different result than when
+    I run all of the years and look at the individual result. 
+        --> This shouldn't happen because the function is looping through the years already.
+            It gets a clean start no matter how many other years are being analyzed. WHY
+ANSWER: the trades object was continually growing. It was outside of the year in year_ranges loop so it never got reset :(
+*******
 
 Things to test:
     [x] analyze results if only going long/short

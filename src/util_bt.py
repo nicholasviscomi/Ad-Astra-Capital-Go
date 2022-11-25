@@ -30,7 +30,7 @@ class Trade:
     def percent_profit(self):
         return ((self.bought - self.sold)/self.bought * 100 * self.type_)
 
-def oneday_ATR(prev: Candle, curr: Candle):
+def true_range(prev: Candle, curr: Candle):
     return max(
         (curr.high_ - curr.low_),
         (abs(curr.high_ - prev.close_)),
@@ -42,6 +42,7 @@ def run_analysis(trades: list, year: int, contents, show_graphs: bool, strat=Non
     Gives a brief analysis of the trades. Can choose to show the graphs and save the output to a file
     Returns the winners, losers as lists of trade objects and the total profit
     """
+
     total = sum([
         trade.percent_profit() for trade in trades
     ])
@@ -66,7 +67,6 @@ def run_analysis(trades: list, year: int, contents, show_graphs: bool, strat=Non
     ret = (winners, losers, total)
 
     winners = [win.percent_profit() for win in winners]
-
     losers = [loss.percent_profit() for loss in losers]
 
     longs = list(filter(lambda x: x.type_ == IS_LONG, trades))
@@ -106,8 +106,7 @@ Average Loss: {sum(losers)/len(losers)}
         else:
             with open(f"backtest_results/{strat}/analysis.txt", 'a') as out:
                 out.write(content)
-    if not suppress:  
-        print(content)
+    if not suppress: print(content)
 
     return ret
 

@@ -2,9 +2,9 @@ Tracking the Best Values for the Parameters of the CE Strategy
 
 CE_MULTIPLIERs (ATR is constant at 1)
     Ran on Individual Years
-    2018: 8.2
-    2019: 2.4 & 5.9
-    2020: 5.0 & 8.2
-    2021: 5.0
-    2022: 6.6
-    Ran on All Years: 5.0 is the winner
+    2018: 
+    2019: 
+    2020: 
+    2021: 
+    2022: 
+    Ran on All Years:
