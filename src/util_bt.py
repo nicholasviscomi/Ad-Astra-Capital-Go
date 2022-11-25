@@ -37,10 +37,10 @@ def oneday_ATR(prev: Candle, curr: Candle):
         (abs(curr.low_  - prev.close_))
     )
     
-def print_analysis(trades: list, year: int, contents, show_graphs: bool, strat=None):
+def run_analysis(trades: list, year: int, contents, show_graphs: bool, strat=None, suppress=False):
     """
     Gives a brief analysis of the trades. Can choose to show the graphs and save the output to a file
-    Returns the winners, losers as lists of trade objects 
+    Returns the winners, losers as lists of trade objects and the total profit
     """
     total = sum([
         trade.percent_profit() for trade in trades
@@ -63,7 +63,7 @@ def print_analysis(trades: list, year: int, contents, show_graphs: bool, strat=N
     if show_graphs: show_trade(losers[0], contents)
 
     # Save winners and losers list while they still have trade objects
-    ret = (winners, losers)
+    ret = (winners, losers, total)
 
     winners = [win.percent_profit() for win in winners]
 
@@ -106,12 +106,14 @@ Average Loss: {sum(losers)/len(losers)}
         else:
             with open(f"backtest_results/{strat}/analysis.txt", 'a') as out:
                 out.write(content)
-            
-    print(content)
+    if not suppress:  
+        print(content)
 
     return ret
 
 def analyze_trade_types(winners, losers, year: int, strat=None):
+    if strat == None: return
+
     long_winners = list(filter(lambda x: x.type_ == IS_LONG, winners))
     short_winners = list(filter(lambda x: x.type_ == IS_SHORT, winners))
 
@@ -126,14 +128,13 @@ def analyze_trade_types(winners, losers, year: int, strat=None):
     ax[1].pie([len(long_losers), len(short_losers)], labels=['Long', 'Short'], autopct='%1.1f%%')
     ax[1].set_title(f"Losing Trades {year}")
 
-    if strat != None:
-        plt.savefig(f"backtest_results/{strat}/{year}-Trade_Type_Analysis.png")
+    plt.savefig(f"backtest_results/{strat}/{year}-Trade_Type_Analysis.png")
 
     # ax[0].clear()
     # ax[1].clear()
     # plt.show()
 
-def show_trade(trade: Trade, contents, zoom: int = 5,):
+def show_trade(trade: Trade, contents, zoom: int = 5):
     """
     Create a matplot of the trade
     It will show (zoom)-number of candles before and after the trade

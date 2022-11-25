@@ -138,37 +138,8 @@ def Trend_Follow_Backtest(show_graphs: bool, save_fig: bool, save_analysis: bool
             
             strat = None
             if save_analysis: strat = "TrendFollow"
-            winners, losers = print_analysis(trades, year, contents, show_graphs, strat) # returns sorted lists
+            winners, losers = run_analysis(trades, year, contents, show_graphs, strat) # returns sorted lists
             
             if save_fig: strat = "TrendFollow"
             else: strat = None # Need this line to ensure that strat goes back to None if !save_fig
             analyze_trade_types(winners, losers, year, strat)
-
-
-
-            # for i in range(10):
-            #     show_trade(losers[i], contents, zoom=10)
-
-            # prices = pd.DataFrame({
-            #     "open"  : [candle.open_ for candle in candles],
-            #     "high"  : [candle.high_ for candle in candles],
-            #     "low"   : [candle.low_ for candle in candles],
-            #     "close" : [candle.close_ for candle in candles]
-            # })
-            # green = prices[prices.close >= prices.open] # green candles
-            # red   = prices[prices.close < prices.open] # red candles
-            # w1, w2 = 0.4, 0.04 # width of thick part and width of extrema
-
-            # graph green candles (x, height, width, bottom, color)
-            # plt.bar(green.index, green.close - green.open, w1, green.open, color='green') # thick middle part
-            # plt.bar(green.index, green.high  - green.close, w2, green.close, color='green') # high price
-            # plt.bar(green.index, green.low  - green.open, w2, green.open, color='green') # low price
-            
-            # plt.bar(red.index, red.close - red.open, w1, red.open, color='red') # thick middle part
-            # plt.bar(red.index, red.high  - red.open, w2, red.open, color='red') # high price
-            # plt.bar(red.index, red.low   - red.close, w2, red.close, color='red') # low price
-
-            # plt.plot(lema_y, label='26 EMA')
-            # plt.plot(sema_y, label='12 EMA')
-            # plt.legend()
-            # # plt.show()

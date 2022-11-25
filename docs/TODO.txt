@@ -7,18 +7,21 @@
     --> then look out whether the market was bearish or bullish to see if there is a correlation????
 
 Things to test:
-    [ ] analyze results if only going long/short
+    [x] analyze results if only going long/short
+    [ ] Loop through different CE_MULTIPLIERs and ATR lengths
+        --> To do this I need to make ATR variable length, which also
+            means keeping track of the previous 30 points
     [ ] Look at the time of day when the losing trades are
         --> Lack of volatility is terrible for profit, so don't trade at 2am or something like that bro
     [ ] Loop through different combinations of ema lengths
         --> O(n^2) so don't do too many
-    [ ] Loop through different CE_MULTIPLIERs
     [ ] Loop through different stop loss thresholds
 
 CE Strat Problems:
     [ ] When I open a trade with CE strat, if the next candle is in the wrong direction by about 40% of
         the previous candle it's usually a big loss
-    --- Almost double the amount of losing trades compared to winning ones
+    $$$ It is only successful going either long or short. CANNOT do both
+    ??? Almost double the amount of losing trades compared to winning ones
     [ ] Don't trade when theres no volume
 
 [ ] Should I just append the csv file with a ton of indicators I calculate?

@@ -1,9 +1,9 @@
 import csv
 from util_bt import *
 
-def CE_Backtest(show_graphs: bool, save_fig: bool, save_analysis: bool):
+def CE_Backtest(ce_mult: float, atr_len: int, show_graphs: bool, save_fig: bool, save_analysis: bool):
     """
-    Test the chandeleir exit strategy with ATR length = 1, multiplier = 1.85
+    Test the chandeleir exit strategy with ATR length = 1, multiplier = ce_mult
     """
     with open(one_hr_data_path, mode='r') as file:
         csv_file = csv.reader(file)
@@ -15,8 +15,8 @@ def CE_Backtest(show_graphs: bool, save_fig: bool, save_analysis: bool):
         
         # used to loop through just specific years within the massive data file
         trades = []
-
         for year in year_ranges:
+            tot_profit = 0
             prev_candle = None
             prev_EL, prev_ES = 0.0, 0.0
             inLongPos, inShortPos = False, False
@@ -34,8 +34,8 @@ def CE_Backtest(show_graphs: bool, save_fig: bool, save_analysis: bool):
 
                 atr = oneday_ATR(prev_candle, curr_candle)
 
-                curr_EL = curr_candle.close_ - (atr * CE_MULTIPLIER)
-                curr_ES = curr_candle.close_ + (atr * CE_MULTIPLIER)
+                curr_EL = curr_candle.close_ - (atr * ce_mult)
+                curr_ES = curr_candle.close_ + (atr * ce_mult)
                 if prev_candle.close_ > prev_EL:
                     curr_EL = max(curr_EL, prev_EL)
 
@@ -119,8 +119,12 @@ def CE_Backtest(show_graphs: bool, save_fig: bool, save_analysis: bool):
 
             strat = None
             if save_analysis: strat = "CE"
-            winners, losers = print_analysis(trades, year, contents, show_graphs, strat)
-            
+            winners, losers, profit = run_analysis(trades, year, contents, show_graphs, strat, suppress=True)
+
+            tot_profit += profit
+
             if save_fig: strat = "CE"
             else: strat = None # Need this line to ensure that strat goes back to None if !save_fig
             analyze_trade_types(winners, losers, year, strat)            
+        
+        return tot_profit
