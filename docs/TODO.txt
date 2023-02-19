@@ -9,13 +9,12 @@ ANSWER: the trades object was continually growing. It was outside of the year in
 
 Things to test:
     [x] analyze results if only going long/short
-    [ ] Loop through different CE_MULTIPLIERs and ATR lengths
+    [x] Loop through different CE_MULTIPLIERs and ATR lengths
         --> To do this I need to make ATR variable length, which also
             means keeping track of the previous 30 points
     [ ] Look at the time of day when the losing trades are
         --> Lack of volatility is terrible for profit, so don't trade at 2am or something like that bro
     [ ] Loop through different combinations of ema lengths
-        --> O(n^2) so don't do too many
     [ ] Loop through different stop loss thresholds
 
 CE Strat Problems:

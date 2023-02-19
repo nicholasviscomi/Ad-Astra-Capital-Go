@@ -1,10 +1,10 @@
 Tracking the Best Values for the Parameters of the CE Strategy
 
-CE_MULTIPLIERs (ATR is constant at 1)
+ATR Length & Ce Multiplier
     Ran on Individual Years
-    2018: 
-    2019: 
-    2020: 
-    2021: 
-    2022: 
-    Ran on All Years:
+    2018: 20 len, 4.4 mult
+    2019: 20 len, 3.7 mult
+    2020: 30 len, 5.0 mult
+    2021: 28 len, 1.0 mult
+    2022: 15 len, 2.8 mult
+    All Years: 

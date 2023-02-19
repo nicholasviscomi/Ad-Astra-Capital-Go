@@ -7,12 +7,13 @@ SMOOTHING = 2
 
 def Trend_Follow_Backtest(
     lEMA_len: int, sEMA_len: int,
-    show_graphs: bool, save_fig: bool, save_analysis: bool
+    show_graphs: bool, save_fig: bool, save_analysis: bool, suppress: bool
     ):
     """
     Test a simple EMA trend following strategy.
     When a shorter moving average crosses up a longer one, an uptrend should be starting. 
     When a shorter moving average crosses down a longer one, a downtrend should be starting.
+    lEMA = long EMA, sEMA = short EMA
     """
     tot_profit = None
     with open(one_hr_data_path, mode='r') as file:
@@ -28,9 +29,9 @@ def Trend_Follow_Backtest(
             tot_profit = 0
             inLongPos, inShortPos = False, False
             shortPosPrice, longPosPrice = 0.0, 0.0
+            t_bought = ""
 
             moving_pts = []
-            lEMA_len, sEMA_len = 26, 12 # lEMA = long EMA, sEMA = short EMA
             prev_lEMA, prev_sEMA = -1, -1
             prev_deltaEMA = -1 # used to track a crossing of ema
 
@@ -69,7 +70,9 @@ def Trend_Follow_Backtest(
                 if inLongPos:
                     mock_trade = Trade(
                         bought=longPosPrice,
+                        t_bought=t_bought,
                         sold=close_,
+                        t_sold=date,
                         start_i=start_i,
                         end_i=i,
                         type_=IS_LONG
@@ -85,7 +88,9 @@ def Trend_Follow_Backtest(
                 if inShortPos:
                     mock_trade = Trade(
                         bought=shortPosPrice,
+                        t_bought=t_bought,
                         sold=close_,
+                        t_sold=date,
                         start_i=start_i,
                         end_i=i,
                         type_=IS_SHORT
@@ -106,7 +111,9 @@ def Trend_Follow_Backtest(
                     if inShortPos:
                         trades.append(Trade(
                             bought=shortPosPrice,
+                            t_bought=t_bought,
                             sold=close_,
+                            t_sold=date,
                             start_i=start_i,
                             end_i=i,
                             type_=IS_SHORT
@@ -115,6 +122,7 @@ def Trend_Follow_Backtest(
 
                     inLongPos = True
                     longPosPrice = close_
+                    t_bought = date
                     start_i = i
 
                 if not inShortPos and (prev_deltaEMA > 1 and curr_deltaEMA < 1):
@@ -122,7 +130,9 @@ def Trend_Follow_Backtest(
                     if inLongPos:
                         trades.append(Trade(
                             bought=longPosPrice,
+                            t_bought=t_bought,
                             sold=close_,
+                            t_sold=date,
                             start_i=start_i,
                             end_i=i,
                             type_=IS_LONG
@@ -131,6 +141,7 @@ def Trend_Follow_Backtest(
                     
                     inShortPos = True
                     shortPosPrice = close_
+                    t_bought = date
                     start_i = i
                     
                 # lema_y.append(curr_lEMA)
@@ -143,7 +154,7 @@ def Trend_Follow_Backtest(
             
             strat = None
             if save_analysis: strat = "TrendFollow"
-            winners, losers, profit = run_analysis(trades, year, contents, show_graphs, strat) # returns sorted lists
+            winners, losers, profit = run_basic_analysis(trades, year, contents, show_graphs, strat, suppress) # returns sorted lists
             
             tot_profit += profit
 

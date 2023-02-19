@@ -1,3 +1,4 @@
+from collections import deque
 from dataclasses import dataclass
 from matplotlib.patches import Rectangle
 import pandas as pd
@@ -6,6 +7,19 @@ import matplotlib.pyplot as plt
 CE_MULTIPLIER = 1.85
 one_hr_data_path  = 'historical_data/Bitstamp_BTCUSD_1h.csv'
 one_min_data_path = 'historical_data/Bitstamp_BTCUSD_2021_minute.csv'
+
+class Queue:
+    def __init__(self):
+        self._elements = deque()
+
+    def enqueue(self, element):
+        self._elements.append(element)
+
+    def dequeue(self):
+        return self._elements.popleft()
+    
+    def length(self):
+        return len(self._elements)
 
 @dataclass
 class Candle:
@@ -20,24 +34,19 @@ IS_SHORT =  1
 IS_LONG  = -1
 @dataclass
 class Trade:
-    bought  : float
-    sold    : float
-    start_i : int # index of the start of the trade in the file
-    end_i   : int # index of the end of the trade in the file
+    bought   : float
+    t_bought : str # time bought
+    sold     : float
+    t_sold   : str # time sold
+    start_i  : int # index of the start of the trade in the file
+    end_i    : int # index of the end of the trade in the file
     type_    : int # -1 if shorting so profit calculations are correct
 
     # Kraken has a 0.9% fee per transaction
     def percent_profit(self):
         return ((self.bought - self.sold)/self.bought * 100 * self.type_)
-
-def true_range(prev: Candle, curr: Candle):
-    return max(
-        (curr.high_ - curr.low_),
-        (abs(curr.high_ - prev.close_)),
-        (abs(curr.low_  - prev.close_))
-    )
     
-def run_analysis(trades: list, year: int, contents, show_graphs: bool, strat=None, suppress=False):
+def run_basic_analysis(trades: list, year: int, contents, show_graphs: bool, strat=None, suppress=False):
     """
     Gives a brief analysis of the trades. Can choose to show the graphs and save the output to a file
     Returns the winners, losers as lists of trade objects and the total profit
@@ -109,6 +118,12 @@ Average Loss: {sum(losers)/len(losers)}
     if not suppress: print(content)
 
     return ret
+
+def analyze_trade_times(winners, losers, year: int):
+    data = {}
+    for win in winners:
+        data[win.t_bought.split(" ")[1]] = win.percent_profit()
+    return
 
 def analyze_trade_types(winners, losers, year: int, strat=None):
     if strat == None: return

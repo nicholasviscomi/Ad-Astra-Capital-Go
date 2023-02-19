@@ -1,8 +1,7 @@
-# Asset Trading Bot
+# Analysis of Asset Trading Strategies
 ## Status: In development
-### Language: Python (used to be go, used to be swift)
+### Language: Python
 
--Asset trading bot to trade crypto 24/7 on an AWS EC2 Ubunutu 18.04 instance
 
 #### Developer & Founder: Nick Viscomi
 
