@@ -6,26 +6,43 @@ from dataclasses import dataclass
 # I could do the same with EDGAR I think?
 # here's where to check the price change of the ticker: https://www.nasdaq.com/market-activity/stocks/aapl/historical
 
-URL_BASE = "https://www.sec.gov" # base of the url to be added before each link that is scraped
-form_links = []
+@dataclass
+class Asset:
+    filing_date: str
+    trade_date: str
+    ticker: str
+    price: float
+    qty_bought: int
 
 if __name__ == "__main__":
-    soup = BeautifulSoup(open("/Users/nickviscomi/Desktop/VSCode Projects/Python/AssetTradingAnalysis/src/OpenInsider/Assets/1.html", encoding="utf8"), "html.parser")
+    # going to download a couple pages of open insider with 1000 search results each
+    # will then scrape those for the trades
     
-    table = soup.find("body").find_all("table")[6]
+    URL = "http://openinsider.com/"
+    page = requests.get(URL)
 
-    for i, row in enumerate(table.find_all("tr")):
-        if i == 0 or i % 2 != 0: continue # don't want the first one and only want evens
-        link = row.find_all("td")[1].find("a")["href"]
-        form_links.append(URL_BASE + link)
+    soup = BeautifulSoup(page.content, "html.parser")
 
-    form = requests.get(form_links[0])
-    soup = BeautifulSoup(form.content, "html.parser")
-    print(soup.prettify())
+    table = soup.find("tbody")
+    rows = table.find_all("tr")
 
-    
-    
+    assets = []
 
-    
+    for row in rows:
+        tds = row.find_all("td")
+        asset = Asset("", "", "", -1, -1)
+        for i, td in enumerate(tds):
+            text = td.get_text()
+            if i == 1:
+                asset.filing_date = text
+            if i == 2:
+                asset.trade_date = text
+            if i == 3:
+                asset.ticker = text
+            if i == 8:
+                asset.price = text
+            if i == 9:
+                asset.qty_bought = text
+        assets.append(asset)
 
-
+    print(assets[0:10])
