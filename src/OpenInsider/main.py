@@ -1,48 +1,74 @@
 import requests
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
+import pickle
 
 # might just search openinsider.com for a ton of data, download the website and then scrape the links. 
 # I could do the same with EDGAR I think?
 # here's where to check the price change of the ticker: https://www.nasdaq.com/market-activity/stocks/aapl/historical
 
 @dataclass
-class Asset:
+class Form:
     filing_date: str
     trade_date: str
     ticker: str
     price: float
     qty_bought: int
 
+DAYS_AGO = "days_ago"
+OWN_CHNG_LOW = "own_change_low"
+N_PAGES = "n_pages"
+
+def get_data(params):
+    forms = []
+    for page_number in range(1, params[N_PAGES] + 1): # plus one because upper range is not inclusive 
+        URL = f"http://openinsider.com/screener?s=&o=&pl=&ph=&ll=&lh=&fd=730&fdr=&td=0&tdr=&fdlyl=&fdlyh=&daysago={params[DAYS_AGO]}&xp=1&vl=&vh=&ocl={params[OWN_CHNG_LOW]}&och=&sic1=-1&sicl=100&sich=9999&isceo=1&iscfo=1&grp=0&nfl=&nfh=&nil=&nih=&nol=&noh=&v2l=&v2h=&oc2l=&oc2h=&sortcol=0&cnt=1000&page={page_number}"
+        page = requests.get(URL)
+        soup = BeautifulSoup(page.content, "html.parser")
+
+        # soup = BeautifulSoup(open("/Users/nickviscomi/Desktop/VSCode Projects/Python/AssetTradingAnalysis/src/OpenInsider/Assets/1.html", encoding="utf8"), "html.parser")
+        
+        table = soup.find("table", class_="tinytable").find("tbody")
+
+        for row in table.find_all("tr"):
+            form = Form("", "", "", -1, -1)
+            for i, td in enumerate(row.find_all("td")):
+                text = td.get_text().strip()
+                if i == 1:
+                    form.filing_date = text
+                if i == 2:
+                    form.trade_date = text
+                if i == 3:
+                    form.ticker = text
+                if i == 8:
+                    form.price = text
+                if i == 9:
+                    form.qty_bought = text
+            forms.append(form)
+
+        print(len(forms))
+    return forms
+
+def save_data(data, fname):
+    with open(f"src/OpenInsider/Assets/{fname}.pkl", "wb") as file:
+        pickle.dump(data, file)
+
+
 if __name__ == "__main__":
-    # going to download a couple pages of open insider with 1000 search results each
-    # will then scrape those for the trades
-    
-    URL = "http://openinsider.com/"
-    page = requests.get(URL)
+    days_ago = 3 # number of days between trading and filing
+    own_change_low = "" # percent
+    n_pages = 1
+    params = {
+        DAYS_AGO : days_ago,
+        OWN_CHNG_LOW : own_change_low,
+        N_PAGES : n_pages
+    }
 
-    soup = BeautifulSoup(page.content, "html.parser")
+    data = get_data(params)
+    print(data[0])
 
-    table = soup.find("tbody")
-    rows = table.find_all("tr")
+    save_data(data, "Data")
 
-    assets = []
-
-    for row in rows:
-        tds = row.find_all("td")
-        asset = Asset("", "", "", -1, -1)
-        for i, td in enumerate(tds):
-            text = td.get_text()
-            if i == 1:
-                asset.filing_date = text
-            if i == 2:
-                asset.trade_date = text
-            if i == 3:
-                asset.ticker = text
-            if i == 8:
-                asset.price = text
-            if i == 9:
-                asset.qty_bought = text
-        assets.append(asset)
-
-    print(assets[0:10])
+    with open("src/OpenInsider/Assets/Data.pkl", "rb") as file:
+        data = pickle.load(file)
+        print(data[0])
