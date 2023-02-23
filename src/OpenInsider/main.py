@@ -53,6 +53,10 @@ def save_data(data, fname):
     with open(f"src/OpenInsider/Assets/{fname}.pkl", "wb") as file:
         pickle.dump(data, file)
 
+def load_data(fname):
+    with open("src/OpenInsider/Assets/Data.pkl", "rb") as file:
+        data = pickle.load(file)
+        return data
 
 if __name__ == "__main__":
     days_ago = 3 # number of days between trading and filing
@@ -64,11 +68,7 @@ if __name__ == "__main__":
         N_PAGES : n_pages
     }
 
-    data = get_data(params)
-    print(data[0])
+    # data = get_data(params)
+    # save_data(data, "Data")
 
-    save_data(data, "Data")
-
-    with open("src/OpenInsider/Assets/Data.pkl", "rb") as file:
-        data = pickle.load(file)
-        print(data[0])
+    data = load_data("Data")
