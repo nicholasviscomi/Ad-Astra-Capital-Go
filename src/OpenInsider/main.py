@@ -120,15 +120,25 @@ def get_trades_from_data(forms: list[Form]):
         response = requests.get(url, headers=headers)
         print(f"NASDAQ API Request Status: {response.status_code}")
         
+        if response.status_code != 200: continue
+        if response.json()["data"] is None or response.json()["data"]["tradesTable"] is None or response.json()["data"]["tradesTable"]["rows"] is None: continue
+        
         trade = Trade(form, [])
         for row in response.json()["data"]["tradesTable"]["rows"]:
+
+            o = row["open"][1:].replace(",", "")
+            cl = row["close"][1:].replace(",", "")
+            h = row["high"][1:].replace(",", "")
+            l = row["low"][1:].replace(",", "")
+            v = row["volume"].replace(",", "")
+
             c = Candle(
                 row["date"], 
-                float(row["open"][1:]),
-                float(row["close"][1:]), 
-                float(row["high"][1:]), 
-                float(row["low"][1:]), 
-                int(row["volume"].replace(",", ""))
+                float(o)  if o  != 'N/A' else -1,
+                float(cl) if cl != 'N/A' else -1, 
+                float(h)  if h  != 'N/A' else -1, 
+                float(l)  if l  != 'N/A' else -1, 
+                int(v)    if v  != 'N/A' else -1
             )
             trade.candles.append(c)
 
@@ -151,4 +161,6 @@ if __name__ == "__main__":
     # save_data(data, "Data")
 
     data = load_data("Data")
-    trades = get_trades_from_data(data[0:3])
+
+    trades = get_trades_from_data(data)
+    save_data(trades, "Trades")
