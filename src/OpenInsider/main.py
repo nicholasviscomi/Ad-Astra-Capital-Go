@@ -5,6 +5,9 @@ import pickle
 from datetime import datetime as dt
 from datetime import date
 import datetime
+from matplotlib.patches import Rectangle
+import pandas as pd
+import matplotlib.pyplot as plt
 
 # might just search openinsider.com for a ton of data, download the website and then scrape the links. 
 # I could do the same with EDGAR I think?
@@ -95,11 +98,7 @@ def get_trades_from_data(forms: list[Form]):
 
     for form in forms:
         to_date = dt.today()
-        fd = dt.strptime(form.filing_date, "%Y-%m-%d")
-        if (dt.today() - fd).days > 20:
-            to_date = fd + datetime.timedelta(days=20)
-
-        url = f"https://api.nasdaq.com/api/quote/{form.ticker}/historical?assetclass=stocks&fromdate={form.filing_date}&limit=9999&todate={date(to_date.year, to_date.month, to_date.day)}"
+        url = f"https://api.nasdaq.com/api/quote/{form.ticker}/historical?assetclass=stocks&fromdate=2020-02-27&limit=9999&todate={date(to_date.year, to_date.month, to_date.day)}"
         print(f"Request sent to: {url}")
         headers = {
             "authority": "api.nasdaq.com",
@@ -120,8 +119,12 @@ def get_trades_from_data(forms: list[Form]):
         response = requests.get(url, headers=headers)
         print(f"NASDAQ API Request Status: {response.status_code}")
         
-        if response.status_code != 200: continue
-        if response.json()["data"] is None or response.json()["data"]["tradesTable"] is None or response.json()["data"]["tradesTable"]["rows"] is None: continue
+        if response.status_code != 200: 
+            print(f"Failed status code: {form.ticker}")
+            exit(1)
+        if response.json()["data"] is None or response.json()["data"]["tradesTable"] is None or response.json()["data"]["tradesTable"]["rows"] is None: 
+            print(f"Json response was none: {form.ticker}; url: {url}")
+            exit(1)
         
         trade = Trade(form, [])
         for row in response.json()["data"]["tradesTable"]["rows"]:
@@ -142,25 +145,69 @@ def get_trades_from_data(forms: list[Form]):
             )
             trade.candles.append(c)
 
+        # find the index of the filing date within trade.candles
+        dates = [candle.date for candle in trade.candles]
+        fd_components = form.filing_date.replace("-", "/").split("/")
+
+        new_date = f"{fd_components[1]}/{fd_components[2]}/{fd_components[0]}"
+        i = dates.index(new_date)
+        print(f"{new_date} @ {i}")
+
+        if (i - 20) >= 0 and (i - 20) < len(trade.candles):
+            trade.candles = trade.candles[i - 20 : i]
+        else:
+            trade.candles = trade.candles[0 : i]
+
         trades.append(trade)
-        print()
 
     return trades
 
+def show_trade(trade: Trade):
+    prices = pd.DataFrame({
+        "high"  : [candle.h  for candle in trade.candles],
+        "low"   : [candle.l  for candle in trade.candles],
+        "open"  : [candle.o  for candle in trade.candles],
+        "close" : [candle.c  for candle in trade.candles]
+    })
+    green  = prices[prices.close >= prices.open] # green candles
+    red    = prices[prices.close < prices.open] # red candles
+    w1, w2 = 0.4, 0.04 # width of thick part and width of extrema
+
+    _, ax = plt.subplots()
+    # graph green candles (x, height, width, bottom, color)
+    ax.bar(green.index, green.close - green.open, w1, green.open, color='green') # thick middle part
+    ax.bar(green.index, green.high  - green.close, w2, green.close, color='green') # high price
+    ax.bar(green.index, green.low  - green.open, w2, green.open, color='green') # low price
+    
+    ax.bar(red.index, red.close - red.open, w1, red.open, color='red') # thick middle part
+    ax.bar(red.index, red.high  - red.open, w2, red.open, color='red') # high price
+    ax.bar(red.index, red.low   - red.close, w2, red.close, color='red') # low price
+
+    title = f"{trade.form.ticker} @ {trade.form.filing_date}"
+    ax.set_title(title)
+    plt.show()
+
 if __name__ == "__main__":
-    days_ago = 3 # number of days between trading and filing
-    own_change_low = "" # percent
-    n_pages = 1
     params = {
-        DAYS_AGO : days_ago,
-        OWN_CHNG_LOW : own_change_low,
-        N_PAGES : n_pages
+        DAYS_AGO : 3,
+        OWN_CHNG_LOW : "",
+        N_PAGES : 1
     }
 
     # data = get_data(params)
     # save_data(data, "Data")
 
-    data = load_data("Data")
+    data = load_data("Data")[10]
+    print(data)
+    trades = get_trades_from_data([data])
+    print(trades)
 
-    trades = get_trades_from_data(data)
-    save_data(trades, "Trades")
+    # for t in trades:
+    #     print(t)
+    #     print()
+    # save_data(trades, "Trades")
+
+    # trades : list[Trade] = load_data("Trades")
+    # print(len(trades))
+
+# https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&datea=&dateb=&company=&type=&SIC=&State=&Country=&CIK=&owner=only&accno=&start=100&count=100
