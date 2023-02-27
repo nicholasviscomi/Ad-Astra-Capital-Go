@@ -96,7 +96,8 @@ class Trade:
 def get_trades_from_data(forms: list[Form]):
     trades = []
 
-    for form in forms:
+    for i, form in enumerate(forms):
+        # print(f"{i / len(forms) * 100}%")
         to_date = dt.today()
         url = f"https://api.nasdaq.com/api/quote/{form.ticker}/historical?assetclass=stocks&fromdate=2020-02-27&limit=9999&todate={date(to_date.year, to_date.month, to_date.day)}"
         print(f"Request sent to: {url}")
@@ -116,15 +117,15 @@ def get_trades_from_data(forms: list[Form]):
             "sec-gpc": "1",
             "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
         }
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=10)
         print(f"NASDAQ API Request Status: {response.status_code}")
         
         if response.status_code != 200: 
             print(f"Failed status code: {form.ticker}")
-            exit(1)
+            continue
         if response.json()["data"] is None or response.json()["data"]["tradesTable"] is None or response.json()["data"]["tradesTable"]["rows"] is None: 
             print(f"Json response was none: {form.ticker}; url: {url}")
-            exit(1)
+            continue
         
         trade = Trade(form, [])
         for row in response.json()["data"]["tradesTable"]["rows"]:
@@ -151,7 +152,7 @@ def get_trades_from_data(forms: list[Form]):
 
         new_date = f"{fd_components[1]}/{fd_components[2]}/{fd_components[0]}"
         i = dates.index(new_date)
-        print(f"{new_date} @ {i}")
+        # print(f"{new_date} @ {i}")
 
         if (i - 20) >= 0 and (i - 20) < len(trade.candles):
             trade.candles = trade.candles[i - 20 : i]
@@ -197,13 +198,11 @@ if __name__ == "__main__":
     # data = get_data(params)
     # save_data(data, "Data")
 
-    data = load_data("Data")
-    trades = get_trades_from_data(data[0:15])
-    print(len(trades))
+    # data = load_data("Data")
+    # trades = get_trades_from_data(data)
+    # save_data(trades, "Trades")
 
-    save_data(trades, "Trades")
+    trades : list[Trade] = load_data("Trades")
 
-    # trades : list[Trade] = load_data("Trades")
-    # print(len(trades))
 
 # https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&datea=&dateb=&company=&type=&SIC=&State=&Country=&CIK=&owner=only&accno=&start=100&count=100
