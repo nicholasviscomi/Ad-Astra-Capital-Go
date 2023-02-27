@@ -2,5 +2,3 @@
 *.csv
 
 historical_data/**
-
-src/OpenInsider/Assets/**

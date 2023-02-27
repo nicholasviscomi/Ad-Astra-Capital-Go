@@ -197,15 +197,11 @@ if __name__ == "__main__":
     # data = get_data(params)
     # save_data(data, "Data")
 
-    data = load_data("Data")[10]
-    print(data)
-    trades = get_trades_from_data([data])
-    print(trades)
+    data = load_data("Data")
+    trades = get_trades_from_data(data[0:15])
+    print(len(trades))
 
-    # for t in trades:
-    #     print(t)
-    #     print()
-    # save_data(trades, "Trades")
+    save_data(trades, "Trades")
 
     # trades : list[Trade] = load_data("Trades")
     # print(len(trades))
