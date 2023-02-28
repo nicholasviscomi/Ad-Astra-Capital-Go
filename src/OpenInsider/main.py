@@ -159,6 +159,7 @@ def get_trades_from_data(forms: list[Form]):
         else:
             trade.candles = trade.candles[0 : i]
 
+        trade.candles = trade.candles[::-1]
         trades.append(trade)
 
     return trades
@@ -172,19 +173,19 @@ def show_trade(trade: Trade):
     })
     green  = prices[prices.close >= prices.open] # green candles
     red    = prices[prices.close < prices.open] # red candles
-    w1, w2 = 0.4, 0.04 # width of thick part and width of extrema
+    w1, w2 = 0.4, 0.02 # width of thick part and width of extrema
 
     _, ax = plt.subplots()
     # graph green candles (x, height, width, bottom, color)
     ax.bar(green.index, green.close - green.open, w1, green.open, color='green') # thick middle part
-    ax.bar(green.index, green.high  - green.close, w2, green.close, color='green') # high price
-    ax.bar(green.index, green.low  - green.open, w2, green.open, color='green') # low price
+    ax.bar(green.index, green.high  - green.close, w2, green.close, color='black') # high price
+    ax.bar(green.index, green.low  - green.open, w2, green.open, color='black') # low price
     
     ax.bar(red.index, red.close - red.open, w1, red.open, color='red') # thick middle part
-    ax.bar(red.index, red.high  - red.open, w2, red.open, color='red') # high price
-    ax.bar(red.index, red.low   - red.close, w2, red.close, color='red') # low price
+    ax.bar(red.index, red.high  - red.open, w2, red.open, color='black') # high price
+    ax.bar(red.index, red.low   - red.close, w2, red.close, color='black') # low price
 
-    title = f"{trade.form.ticker} @ {trade.form.filing_date}"
+    title = f"{trade.form.ticker} @ {trade.candles[0].date}"
     ax.set_title(title)
     plt.show()
 
@@ -204,5 +205,5 @@ if __name__ == "__main__":
 
     trades : list[Trade] = load_data("Trades")
 
-
-# https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&datea=&dateb=&company=&type=&SIC=&State=&Country=&CIK=&owner=only&accno=&start=100&count=100
+    print(trades[-1])
+    show_trade(trades[-1])
