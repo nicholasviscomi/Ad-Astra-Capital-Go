@@ -93,6 +93,19 @@ class Trade:
     form: Form
     candles: list[Candle]
 
+    def calc_profit(self) -> float:
+        d = ((self.candles[-1].c - self.candles[0].c) / self.candles[0].c) * 100
+        print(f"First close: {self.candles[0].c} --> Last Close: {self.candles[-1].c} = {d : .2f}")
+        return d
+
+    def per_day_changes(self):
+        deltas = []
+        for c in self.candles:
+            deltas.append(
+                ((c.c - c.o) / c.o) * 100
+            )
+        return deltas
+
 def get_trades_from_data(forms: list[Form]):
     trades = []
 
@@ -154,8 +167,9 @@ def get_trades_from_data(forms: list[Form]):
         i = dates.index(new_date)
         # print(f"{new_date} @ {i}")
 
-        if (i - 20) >= 0 and (i - 20) < len(trade.candles):
-            trade.candles = trade.candles[i - 20 : i]
+        data_spread = 100
+        if (i - 100) >= 0 and (i - 100) < len(trade.candles):
+            trade.candles = trade.candles[i - 100 : i]
         else:
             trade.candles = trade.candles[0 : i]
 
@@ -189,6 +203,12 @@ def show_trade(trade: Trade):
     ax.set_title(title)
     plt.show()
 
+@dataclass
+class Profit:
+    trade: Trade
+    abs_profit: float # percent increase from first day close to close on 20th day
+
+
 if __name__ == "__main__":
     params = {
         DAYS_AGO : 3,
@@ -196,14 +216,11 @@ if __name__ == "__main__":
         N_PAGES : 1
     }
 
-    # data = get_data(params)
-    # save_data(data, "Data")
+    # forms = get_data(params)
+    # save_data(forms, "Forms")
 
-    # data = load_data("Data")
-    # trades = get_trades_from_data(data)
-    # save_data(trades, "Trades")
+    forms = load_data("Forms")
+    trades = get_trades_from_data(forms)
+    save_data(trades, "Trades")
 
-    trades : list[Trade] = load_data("Trades")
-
-    print(trades[-1])
-    show_trade(trades[-1])
+    # trades : list[Trade] = load_data("Trades")
