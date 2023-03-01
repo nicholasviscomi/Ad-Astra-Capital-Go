@@ -130,51 +130,56 @@ def get_trades_from_data(forms: list[Form]):
             "sec-gpc": "1",
             "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
         }
-        response = requests.get(url, headers=headers, timeout=10)
-        print(f"NASDAQ API Request Status: {response.status_code}")
         
-        if response.status_code != 200: 
-            print(f"Failed status code: {form.ticker}")
-            continue
-        if response.json()["data"] is None or response.json()["data"]["tradesTable"] is None or response.json()["data"]["tradesTable"]["rows"] is None: 
-            print(f"Json response was none: {form.ticker}; url: {url}")
-            continue
-        
-        trade = Trade(form, [])
-        for row in response.json()["data"]["tradesTable"]["rows"]:
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            print(f"NASDAQ API Request Status: {response.status_code}")
 
-            o = row["open"][1:].replace(",", "")
-            cl = row["close"][1:].replace(",", "")
-            h = row["high"][1:].replace(",", "")
-            l = row["low"][1:].replace(",", "")
-            v = row["volume"].replace(",", "")
+            if response.status_code != 200: 
+                print(f"Failed status code: {form.ticker}")
+                continue
+            if response.json()["data"] is None or response.json()["data"]["tradesTable"] is None or response.json()["data"]["tradesTable"]["rows"] is None: 
+                print(f"Json response was none: {form.ticker}; url: {url}")
+                continue
+            
+            trade = Trade(form, [])
+            for row in response.json()["data"]["tradesTable"]["rows"]:
 
-            c = Candle(
-                row["date"], 
-                float(o)  if o  != 'N/A' else -1,
-                float(cl) if cl != 'N/A' else -1, 
-                float(h)  if h  != 'N/A' else -1, 
-                float(l)  if l  != 'N/A' else -1, 
-                int(v)    if v  != 'N/A' else -1
-            )
-            trade.candles.append(c)
+                o = row["open"][1:].replace(",", "")
+                cl = row["close"][1:].replace(",", "")
+                h = row["high"][1:].replace(",", "")
+                l = row["low"][1:].replace(",", "")
+                v = row["volume"].replace(",", "")
 
-        # find the index of the filing date within trade.candles
-        dates = [candle.date for candle in trade.candles]
-        fd_components = form.filing_date.replace("-", "/").split("/")
+                c = Candle(
+                    row["date"], 
+                    float(o)  if o  != 'N/A' else -1,
+                    float(cl) if cl != 'N/A' else -1, 
+                    float(h)  if h  != 'N/A' else -1, 
+                    float(l)  if l  != 'N/A' else -1, 
+                    int(v)    if v  != 'N/A' else -1
+                )
+                trade.candles.append(c)
 
-        new_date = f"{fd_components[1]}/{fd_components[2]}/{fd_components[0]}"
-        i = dates.index(new_date)
-        # print(f"{new_date} @ {i}")
+            # find the index of the filing date within trade.candles
+            dates = [candle.date for candle in trade.candles]
+            fd_components = form.filing_date.replace("-", "/").split("/")
 
-        data_spread = 100
-        if (i - 100) >= 0 and (i - 100) < len(trade.candles):
-            trade.candles = trade.candles[i - 100 : i]
-        else:
-            trade.candles = trade.candles[0 : i]
+            new_date = f"{fd_components[1]}/{fd_components[2]}/{fd_components[0]}"
+            i = dates.index(new_date)
+            # print(f"{new_date} @ {i}")
 
-        trade.candles = trade.candles[::-1]
-        trades.append(trade)
+            data_spread = 100
+            if (i - data_spread) >= 0 and (i - data_spread) < len(trade.candles):
+                trade.candles = trade.candles[i - data_spread : i]
+            else:
+                trade.candles = trade.candles[0 : i]
+
+            trade.candles = trade.candles[::-1]
+            trades.append(trade)
+
+        except requests.exceptions.RequestException:
+            pass
 
     return trades
 
@@ -219,8 +224,9 @@ if __name__ == "__main__":
     # forms = get_data(params)
     # save_data(forms, "Forms")
 
-    forms = load_data("Forms")
-    trades = get_trades_from_data(forms)
-    save_data(trades, "Trades")
+    # forms = load_data("Forms")
+    # trades = get_trades_from_data(forms)
+    # save_data(trades, "Trades")
 
-    # trades : list[Trade] = load_data("Trades")
+    trades : list[Trade] = load_data("Trades")
+    
