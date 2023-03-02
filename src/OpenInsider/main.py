@@ -22,6 +22,7 @@ class Form:
     qty_bought: int
     qty_owned: int
     delta_own: int # percentage
+    buyer_title: str
 
 DAYS_AGO = "days_ago"
 OWN_CHNG_LOW = "own_change_low"
@@ -30,14 +31,14 @@ N_PAGES = "n_pages"
 def get_data(params):
     forms = []
     for page_number in range(1, params[N_PAGES] + 1): # plus one because upper range is not inclusive 
-        URL = f"http://openinsider.com/screener?s=&o=&pl=&ph=&ll=&lh=&fd=730&fdr=&td=0&tdr=&fdlyl=&fdlyh=&daysago={params[DAYS_AGO]}&xp=1&vl=&vh=&ocl={params[OWN_CHNG_LOW]}&och=&sic1=-1&sicl=100&sich=9999&isceo=1&iscfo=1&grp=0&nfl=&nfh=&nil=&nih=&nol=&noh=&v2l=&v2h=&oc2l=&oc2h=&sortcol=0&cnt=1000&page={page_number}"
+        URL = f"http://openinsider.com/screener?s=&o=&pl=&ph=&ll=&lh=&fd=730&fdr=&td=0&tdr=&fdlyl=&fdlyh=&daysago=3&xp=1&vl=&vh=&ocl=&och=&sic1=-1&sicl=100&sich=9999&grp=0&nfl=&nfh=&nil=&nih=&nol=&noh=&v2l=&v2h=&oc2l=&oc2h=&sortcol=0&cnt=1000&page={page_number}"
         page = requests.get(URL)
         soup = BeautifulSoup(page.content, "html.parser")
 
         table = soup.find("table", class_="tinytable").find("tbody")
 
         for row in table.find_all("tr"):
-            form = Form("", "", "", -1.0, -1, -1, -1)
+            form = Form("", "", "", -1.0, -1, -1, -1, "")
             for i, td in enumerate(row.find_all("td")):
                 text = td.get_text().strip()
                 if i == 1:
@@ -46,6 +47,8 @@ def get_data(params):
                     form.trade_date = text.split(" ")[0] # dt.strptime(text.split(" ")[0], "%Y-%m-%d")
                 if i == 3:
                     form.ticker = text
+                if i == 6:
+                    form.buyer_title = text
                 if i == 8:
                     form.price = float(text[1:].replace(",", "")) # remove dollar sign and cast to float
                 if i == 9:
@@ -165,6 +168,7 @@ def get_trades_from_data(forms: list[Form]):
             dates = [candle.date for candle in trade.candles]
             fd_components = form.filing_date.replace("-", "/").split("/")
 
+            #NOTE: make sure the data is starting at the filing date!
             new_date = f"{fd_components[1]}/{fd_components[2]}/{fd_components[0]}"
             i = dates.index(new_date)
             # print(f"{new_date} @ {i}")
@@ -179,6 +183,10 @@ def get_trades_from_data(forms: list[Form]):
             trades.append(trade)
 
         except requests.exceptions.RequestException:
+            pass
+        except ValueError:
+            pass
+        except:
             pass
 
     return trades
@@ -204,7 +212,7 @@ def show_trade(trade: Trade):
     ax.bar(red.index, red.high  - red.open, w2, red.open, color='black') # high price
     ax.bar(red.index, red.low   - red.close, w2, red.close, color='black') # low price
 
-    title = f"{trade.form.ticker} @ {trade.candles[0].date}"
+    title = f"{trade.form.ticker} @ {trade.candles[0].date} (FD: {trade.form.filing_date}, TD: {trade.form.trade_date})"
     ax.set_title(title)
     plt.show()
 
@@ -218,7 +226,7 @@ if __name__ == "__main__":
     params = {
         DAYS_AGO : 3,
         OWN_CHNG_LOW : "",
-        N_PAGES : 1
+        N_PAGES : 4,
     }
 
     # forms = get_data(params)
@@ -229,4 +237,16 @@ if __name__ == "__main__":
     # save_data(trades, "Trades")
 
     trades : list[Trade] = load_data("Trades")
-    
+    print(len(trades))
+
+    # for t in trades[300:310]:
+    #     show_trade(t)
+
+    # profit calculations to test:
+    #  ?--> profit from using chandeleir exit
+    #  ?--> when there is a "big" spike (when the catalyst occurs!), set the stop loss at halfway down the candle
+    #       - make sure to keep following the chain of green candles if there are multiple in a row
+    #       e.x. for a 20% jump on a candle, set the stop loss to 10%
+    #  ?--> those ideas are all a little funky. Maybe I should just do some math to see how big that catlayst is
+
+    # TODO: get forms with more than just CEOs and CFOs! (bitfields for when the buyer has multiple titles)
