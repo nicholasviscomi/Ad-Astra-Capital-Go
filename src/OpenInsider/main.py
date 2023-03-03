@@ -4,14 +4,11 @@ from dataclasses import dataclass
 import pickle
 from datetime import datetime as dt
 from datetime import date
-import datetime
-from matplotlib.patches import Rectangle
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
+import numpy as np
 
-# might just search openinsider.com for a ton of data, download the website and then scrape the links. 
-# I could do the same with EDGAR I think?
-# here's where to check the price change of the ticker: https://www.nasdaq.com/market-activity/stocks/aapl/historical
 
 @dataclass
 class Form:
@@ -191,6 +188,26 @@ def get_trades_from_data(forms: list[Form]):
 
     return trades
 
+def sum_(data):
+    s: float = 0.0
+    for d in data:
+        s += d
+    return s
+
+def moving_avg(data: list, length: int):
+    new_data = []
+    window = []
+    for d in data:
+        if len(window) <= length:
+            window.append(d)
+        else:
+            window = window[1:]
+            window.append(d)
+
+        new_data.append(sum_(window)/len(window))
+    return new_data
+
+
 def show_trade(trade: Trade):
     prices = pd.DataFrame({
         "high"  : [candle.h  for candle in trade.candles],
@@ -211,6 +228,24 @@ def show_trade(trade: Trade):
     ax.bar(red.index, red.close - red.open, w1, red.open, color='red') # thick middle part
     ax.bar(red.index, red.high  - red.open, w2, red.open, color='black') # high price
     ax.bar(red.index, red.low   - red.close, w2, red.close, color='black') # low price
+
+    ma = moving_avg(list(prices.close.array), 7)
+    ax.plot(ma)
+
+    dist = 7
+    height_multiplier = 1.05
+    peaks, _ = find_peaks(ma, distance=dist, height=ma[0] * height_multiplier) # one week between peaks and peak must be a 5% increase from day 0
+    for peak in peaks:
+        ax.plot(peak, ma[peak], "bo")
+
+    # if the price didn't go up enough to find a peak with a 5% increase, remove
+    # the height multiplier and slowly decrease the distance between peaks until
+    # a peak is found. This is necesarry for stagnating stock data (seen in trades[1500:1600:20])
+    while len(peaks) == 0:
+        dist -= 1
+        peaks, _ = find_peaks(ma, distance=dist, height=ma[0]) # one week between peaks and peak must be a 5% increase from day 0
+        for peak in peaks:
+            ax.plot(peak, ma[peak], "bo")
 
     title = f"{trade.form.ticker} @ {trade.candles[0].date} (FD: {trade.form.filing_date}, TD: {trade.form.trade_date})"
     ax.set_title(title)
@@ -237,16 +272,6 @@ if __name__ == "__main__":
     # save_data(trades, "Trades")
 
     trades : list[Trade] = load_data("Trades")
-    print(len(trades))
-
-    # for t in trades[300:310]:
-    #     show_trade(t)
-
-    # profit calculations to test:
-    #  ?--> profit from using chandeleir exit
-    #  ?--> when there is a "big" spike (when the catalyst occurs!), set the stop loss at halfway down the candle
-    #       - make sure to keep following the chain of green candles if there are multiple in a row
-    #       e.x. for a 20% jump on a candle, set the stop loss to 10%
-    #  ?--> those ideas are all a little funky. Maybe I should just do some math to see how big that catlayst is
-
-    # TODO: get forms with more than just CEOs and CFOs! (bitfields for when the buyer has multiple titles)
+    
+    for t in trades[1500:1600:20]:
+        show_trade(t)
