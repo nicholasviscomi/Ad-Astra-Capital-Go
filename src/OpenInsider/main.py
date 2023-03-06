@@ -93,18 +93,22 @@ class Trade:
     form: Form
     candles: list[Candle]
 
-    def calc_profit(self) -> float:
-        d = ((self.candles[-1].c - self.candles[0].c) / self.candles[0].c) * 100
-        print(f"First close: {self.candles[0].c} --> Last Close: {self.candles[-1].c} = {d : .2f}")
-        return d
+    def calc_profit(self):
+        profit: float = 0.0
 
-    def per_day_changes(self):
-        deltas = []
-        for c in self.candles:
-            deltas.append(
-                ((c.c - c.o) / c.o) * 100
-            )
-        return deltas
+        closes = [c.c for c in self.candles]
+        _, peaks = get_peaks(closes)
+        
+        if len(peaks) != 0:
+            for peak in peaks:
+                profit += self.candles[peak].c
+                profit /= len(peaks)
+                return (profit / self.candles[0].c * 100) - 100
+        
+        # function needs to return a value so the sorted() function doesn't yell at me
+        return sum_(closes) / len(closes)
+        # return None
+
 
 def get_trades_from_data(forms: list[Form]):
     trades = []
@@ -207,8 +211,29 @@ def moving_avg(data: list, length: int):
         new_data.append(sum_(window)/len(window))
     return new_data
 
+def get_peaks(price_data: list):
+    ma = moving_avg(price_data, 7)
 
-def show_trade(trade: Trade):
+    dist = 7
+    height_multiplier = 1.05
+    peaks, _ = find_peaks(ma, distance=dist, height=ma[0] * height_multiplier) # one week between peaks and peak must be a 5% increase from day 0
+
+    # if the price didn't go up enough to find a peak with a 5% increase, remove
+    # the height multiplier and slowly decrease the distance between peaks until
+    # a peak is found. This is necesarry for stagnating stock data (seen in trades[1500:1600:20])
+    while len(peaks) == 0 and dist >= 1:
+        peaks, _ = find_peaks(ma, distance=dist) # one week between peaks and peak must be a 5% increase from day 0
+        dist -= 1
+
+    if len(peaks) == 0: return [], []
+
+    for i in range(len(peaks)):
+        if i < len(peaks) - 1:
+            peaks[i] += 1 # shift each peak to the right one because seldom will you exti at the true peak of a stock
+
+    return ma, peaks
+
+def show_trade(trade: Trade, show_peaks: bool):
     prices = pd.DataFrame({
         "high"  : [candle.h  for candle in trade.candles],
         "low"   : [candle.l  for candle in trade.candles],
@@ -229,23 +254,14 @@ def show_trade(trade: Trade):
     ax.bar(red.index, red.high  - red.open, w2, red.open, color='black') # high price
     ax.bar(red.index, red.low   - red.close, w2, red.close, color='black') # low price
 
-    ma = moving_avg(list(prices.close.array), 7)
-    ax.plot(ma)
-
-    dist = 7
-    height_multiplier = 1.05
-    peaks, _ = find_peaks(ma, distance=dist, height=ma[0] * height_multiplier) # one week between peaks and peak must be a 5% increase from day 0
-    for peak in peaks:
-        ax.plot(peak, ma[peak], "bo")
-
-    # if the price didn't go up enough to find a peak with a 5% increase, remove
-    # the height multiplier and slowly decrease the distance between peaks until
-    # a peak is found. This is necesarry for stagnating stock data (seen in trades[1500:1600:20])
-    while len(peaks) == 0:
-        dist -= 1
-        peaks, _ = find_peaks(ma, distance=dist, height=ma[0]) # one week between peaks and peak must be a 5% increase from day 0
+    if show_peaks:
+        ma, peaks = get_peaks(list(prices.close.array))
+        ax.plot(ma)
+        
         for peak in peaks:
             ax.plot(peak, ma[peak], "bo")
+
+        
 
     title = f"{trade.form.ticker} @ {trade.candles[0].date} (FD: {trade.form.filing_date}, TD: {trade.form.trade_date})"
     ax.set_title(title)
@@ -271,7 +287,18 @@ if __name__ == "__main__":
     # trades = get_trades_from_data(forms)
     # save_data(trades, "Trades")
 
-    trades : list[Trade] = load_data("Trades")
+    trades : list[Trade] = load_data("Trimmed")
     
-    for t in trades[1500:1600:20]:
-        show_trade(t)
+    # for t in trades[1500:1600:20]:
+    #     show_trade(t)
+
+    trades = sorted(trades, key=lambda x: x.calc_profit()) # highest profit first
+    
+    # correlate profit with the different metrics
+    # x = [t.form.qty_bought for t in trades]
+    # y = [t.calc_profit()   for t in trades]
+
+    # plt.title("Profit vs. Quantity Bought")
+    # plt.ylabel("% Profit")
+    # plt.xlabel("Number of Shares Bought")
+    # plt.plot(x, y)
