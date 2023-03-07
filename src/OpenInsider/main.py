@@ -1,3 +1,4 @@
+from typing import Optional
 import requests
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 import numpy as np
+import network as NN
 
 
 @dataclass
@@ -18,16 +20,26 @@ class Form:
     price: float
     qty_bought: int
     qty_owned: int
-    delta_own: int # percentage
+    delta_own: float # percentage
     buyer_title: str
+    insider_name: Optional[str] = None # link to the insider's trade history
+    company_link: Optional[str] = None
 
-DAYS_AGO = "days_ago"
-OWN_CHNG_LOW = "own_change_low"
-N_PAGES = "n_pages"
+    def days_ago(self) -> int:
+        fd = dt.strptime(self.filing_date, "%Y-%m-%d")
+        td = dt.strptime(self.trade_date,  "%Y-%m-%d")
+        return (fd - td).days
+    
+    def __eq__(self, other) -> bool:
+        return self.filing_date == other.filing_date and self.trade_date == other.trade_date and self.ticker == other.ticker and self.price == other.price and self.qty_bought == other.qty_bought and self.qty_owned == self.qty_owned
+    
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)
 
-def get_data(params):
+
+def get_data(n_pages) -> list[Form]:
     forms = []
-    for page_number in range(1, params[N_PAGES] + 1): # plus one because upper range is not inclusive 
+    for page_number in range(1, n_pages + 1): # plus one because upper range is not inclusive 
         URL = f"http://openinsider.com/screener?s=&o=&pl=&ph=&ll=&lh=&fd=730&fdr=&td=0&tdr=&fdlyl=&fdlyh=&daysago=3&xp=1&vl=&vh=&ocl=&och=&sic1=-1&sicl=100&sich=9999&grp=0&nfl=&nfh=&nil=&nih=&nol=&noh=&v2l=&v2h=&oc2l=&oc2h=&sortcol=0&cnt=1000&page={page_number}"
         page = requests.get(URL)
         soup = BeautifulSoup(page.content, "html.parser")
@@ -35,7 +47,7 @@ def get_data(params):
         table = soup.find("table", class_="tinytable").find("tbody")
 
         for row in table.find_all("tr"):
-            form = Form("", "", "", -1.0, -1, -1, -1, "")
+            form = Form("", "", "", -1.0, -1, -1, -1, "", "", "")
             for i, td in enumerate(row.find_all("td")):
                 text = td.get_text().strip()
                 if i == 1:
@@ -44,6 +56,9 @@ def get_data(params):
                     form.trade_date = text.split(" ")[0] # dt.strptime(text.split(" ")[0], "%Y-%m-%d")
                 if i == 3:
                     form.ticker = text
+                if i == 5:
+                    form.insider_name = td.find("a")["href"]
+                    form.insider_name = "http://openinsider.com" + form.insider_name
                 if i == 6:
                     form.buyer_title = text
                 if i == 8:
@@ -56,7 +71,9 @@ def get_data(params):
                 if form.qty_owned - form.qty_bought == 0:
                     form.delta_own = 100
                 else:
-                    form.delta_own = int(form.qty_bought / (form.qty_owned - form.qty_bought)) * 100
+                    form.delta_own = float(form.qty_bought / (form.qty_owned - form.qty_bought)) * 100
+
+                form.company_link = f"http://openinsider.com/{form.ticker}"
 
             forms.append(form)
 
@@ -77,7 +94,6 @@ def tickers_from_data(data):
         if form.ticker not in tickers:
             tickers.append(form.ticker)
     return tickers
-
 
 @dataclass
 class Candle:
@@ -267,38 +283,61 @@ def show_trade(trade: Trade, show_peaks: bool):
     ax.set_title(title)
     plt.show()
 
-@dataclass
-class Profit:
-    trade: Trade
-    abs_profit: float # percent increase from first day close to close on 20th day
+def get_winners(trades: list[Trade]) -> list[Trade]:
+    res = []
+    for t in trades:
+        if t.calc_profit() > 0:
+            res.append(t)
+    return res
 
+def get_losers(trades: list[Trade]) -> list[Trade]:
+    res = []
+    for t in trades:
+        if t.calc_profit() < 0:
+            res.append(t)
+    return res
 
 if __name__ == "__main__":
-    params = {
-        DAYS_AGO : 3,
-        OWN_CHNG_LOW : "",
-        N_PAGES : 4,
-    }
 
-    # forms = get_data(params)
-    # save_data(forms, "Forms")
-
-    # forms = load_data("Forms")
-    # trades = get_trades_from_data(forms)
-    # save_data(trades, "Trades")
+    old_forms: list[Form] = load_data("Forms")
+    forms: list[Form] = load_data("New_Forms")
 
     trades : list[Trade] = load_data("Trimmed")
+
+    for i, form in enumerate(forms):
+        if form.qty_owned == 3441661:
+            forms = forms[i:]
+
+    save_data(forms, "Forms")
+
+    #TODO: go back and update the forms to have all of the data available, especially the links
+    #      to the Insider Name, Company Name, and Ticker so that I can write some fire code that
+    #      will check the overall track record of this insider and the company.
+
+    #TODO: check the delta_own calculations; they seem wrong
+
+    # for t in trades:
+    #     if t.form.delta_own > 100:
+    #         print(t.form)
+    
+    #NOTE: there really should be a moderately good answer within these forms; I just need to find it
     
     # for t in trades[1500:1600:20]:
     #     show_trade(t)
 
-    trades = sorted(trades, key=lambda x: x.calc_profit()) # highest profit first
-    
-    # correlate profit with the different metrics
-    # x = [t.form.qty_bought for t in trades]
-    # y = [t.calc_profit()   for t in trades]
+    # trades = sorted(trades, key=lambda x: x.form.qty_bought) 
+    # trades = list(filter(lambda x: x.form.days_ago() < 10 and x.form.delta_own < 600, trades))
 
-    # plt.title("Profit vs. Quantity Bought")
-    # plt.ylabel("% Profit")
-    # plt.xlabel("Number of Shares Bought")
-    # plt.plot(x, y)
+    # winners = get_winners(trades)
+    # losers = get_losers(trades)
+
+    # ax = plt.axes(projection='3d')
+
+    # x = [t.form.days_ago() for t in winners]; ax.set_xlabel("Days Ago")
+    # y = [t.form.delta_own for t in winners];  ax.set_ylabel("∆ Own")
+    # z = [t.calc_profit()   for t in winners]; ax.set_zlabel("Profit")
+
+    # ax.scatter3D(x, y, z)
+    # plt.show()
+
+    # network = NN.init_network((4, 10, 2))

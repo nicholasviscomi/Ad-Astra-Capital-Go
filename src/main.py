@@ -26,5 +26,5 @@ if __name__ == '__main__':
 
     # CE_Backtest(ce_mult=1.85, atr_len=1, **kwargs)
     
-    # Trend_Follow_Backtest(lEMA_len=26, sEMA_len=12, **kwargs)
-    print("aslkdfnsdlkfn")
+    Trend_Follow_Backtest(lEMA_len=26, sEMA_len=12, **kwargs)
+    # print("aslkdfnsdlkfn")
