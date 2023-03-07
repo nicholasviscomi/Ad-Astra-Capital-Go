@@ -299,16 +299,18 @@ def get_losers(trades: list[Trade]) -> list[Trade]:
 
 if __name__ == "__main__":
 
-    old_forms: list[Form] = load_data("Forms")
-    forms: list[Form] = load_data("New_Forms")
+    forms: list[Form] = load_data("Forms")
 
-    trades : list[Trade] = load_data("Trimmed")
+    trades: list[Trade] = load_data("Trades")
+    
+    # new_trades = []
+    # for t, f in zip(trades, forms):
+    #     if t.form.qty_bought == f.qty_bought:
+    #         new_trade = t
+    #         new_trade.form = f
+    #         new_trades.append(new_trade)
 
-    for i, form in enumerate(forms):
-        if form.qty_owned == 3441661:
-            forms = forms[i:]
-
-    save_data(forms, "Forms")
+        
 
     #TODO: go back and update the forms to have all of the data available, especially the links
     #      to the Insider Name, Company Name, and Ticker so that I can write some fire code that
