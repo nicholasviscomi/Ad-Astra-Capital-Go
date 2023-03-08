@@ -1,3 +1,4 @@
+import math
 from typing import Optional
 import requests
 from bs4 import BeautifulSoup
@@ -232,20 +233,20 @@ def get_peaks(price_data: list):
 
     dist = 7
     height_multiplier = 1.05
-    peaks, _ = find_peaks(ma, distance=dist, height=ma[0] * height_multiplier) # one week between peaks and peak must be a 5% increase from day 0
+    peaks, _ = find_peaks(ma, distance=dist, height=ma[0] * height_multiplier, width=5) # one week between peaks and peak must be a 5% increase from day 0
 
     # if the price didn't go up enough to find a peak with a 5% increase, remove
     # the height multiplier and slowly decrease the distance between peaks until
     # a peak is found. This is necesarry for stagnating stock data (seen in trades[1500:1600:20])
     while len(peaks) == 0 and dist >= 1:
-        peaks, _ = find_peaks(ma, distance=dist) # one week between peaks and peak must be a 5% increase from day 0
+        peaks, _ = find_peaks(ma, distance=dist, width=5) # one week between peaks and peak must be a 5% increase from day 0
         dist -= 1
 
     if len(peaks) == 0: return [], []
 
     for i in range(len(peaks)):
         if i < len(peaks) - 1:
-            peaks[i] += 1 # shift each peak to the right one because seldom will you exti at the true peak of a stock
+            peaks[i] += 1 # shift each peak to the right one because seldom will you exit at the true peak of a stock
 
     return ma, peaks
 
@@ -299,47 +300,48 @@ def get_losers(trades: list[Trade]) -> list[Trade]:
 
 if __name__ == "__main__":
 
+    trades: list[Trade] = load_data("Trimmed")
+    
     forms: list[Form] = load_data("Forms")
 
-    trades: list[Trade] = load_data("Trades")
+    print(trades[0].form)
+    new_trades = trades
+    for i in range(42, len(trades)):
+        new_trades[i - 42].form = forms[i]
+
+    for i in range(len(trades)):
+        if trades[i].form != new_trades[i].form:
+            print("AHHHHHHHHH")
+
     
-    # new_trades = []
-    # for t, f in zip(trades, forms):
-    #     if t.form.qty_bought == f.qty_bought:
-    #         new_trade = t
-    #         new_trade.form = f
-    #         new_trades.append(new_trade)
+    print(new_trades[0].form)
 
-        
-
-    #TODO: go back and update the forms to have all of the data available, especially the links
-    #      to the Insider Name, Company Name, and Ticker so that I can write some fire code that
-    #      will check the overall track record of this insider and the company.
-
-    #TODO: check the delta_own calculations; they seem wrong
+    save_data(new_trades, "Trades")
+    # for i in range(len(trades)):
+    #     if i % 1000 == 0:
+    #         print(trades[i].form)
+    #     trades[i].form = forms[forms.index(trades[i].form)]
 
     # for t in trades:
-    #     if t.form.delta_own > 100:
-    #         print(t.form)
-    
-    #NOTE: there really should be a moderately good answer within these forms; I just need to find it
-    
-    # for t in trades[1500:1600:20]:
-    #     show_trade(t)
+    #     show_trade(t, True)
 
-    # trades = sorted(trades, key=lambda x: x.form.qty_bought) 
-    # trades = list(filter(lambda x: x.form.days_ago() < 10 and x.form.delta_own < 600, trades))
-
-    # winners = get_winners(trades)
-    # losers = get_losers(trades)
-
-    # ax = plt.axes(projection='3d')
-
-    # x = [t.form.days_ago() for t in winners]; ax.set_xlabel("Days Ago")
-    # y = [t.form.delta_own for t in winners];  ax.set_ylabel("∆ Own")
-    # z = [t.calc_profit()   for t in winners]; ax.set_zlabel("Profit")
-
-    # ax.scatter3D(x, y, z)
+    # i,j=0,0
+    # PLOTS_PER_ROW = 5
+    # fig, axs = plt.subplots(math.ceil(len(df.columns)/PLOTS_PER_ROW),PLOTS_PER_ROW, figsize=(20, 60))
+    # for col in df.columns:
+    #     axs[i][j].scatter(df['target_col'], df[col], s=3)
+    #     axs[i][j].set_ylabel(col)
+    #     j+=1
+    #     if j%PLOTS_PER_ROW==0:
+    #         i+=1
+    #         j=0
     # plt.show()
 
-    # network = NN.init_network((4, 10, 2))
+    #TODO: get dictionary of "insider name" : [forms...]
+    #NOTE: be careful not to get any sales!!!!!
+
+    #TODO: get dictionary of "ticker" : [forms...]
+
+    #TODO: quantify track record of both the insiders and the companies
+
+    
