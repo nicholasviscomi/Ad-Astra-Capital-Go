@@ -11,21 +11,39 @@ from scipy.signal import find_peaks
 import numpy as np
 import network as NN
 import os
+import csv
 
 @dataclass
 class Form:
-    filing_date: str
-    trade_date: str
-    ticker: str
-    price: float
-    qty_bought: int
-    qty_owned: int
-    delta_own: float # percentage
-    buyer_title: str
-    insider_name: Optional[str] = None # link to the insider's trade history
+    # Same for both sources
+    filing_date: Optional[str] = None
+    trade_date: Optional[str] = None
+    ticker: Optional[str] = None
+    price: Optional[float] = None
+    qty_bought: Optional[float] = None
+    qty_owned: Optional[float] = None
+
+    #Source: openinsider.com
+    insider_name_link: Optional[str] = None 
     company_link: Optional[str] = None
+    buyer_title: Optional[str] = None
+    
+    #Source: SEC Bulk Data
+    insider_name: Optional[str] = None 
+    company_name: Optional[str] = None
+    insider_relationship: Optional[str] = None 
+    insider_title: Optional[str] = None 
+
+    def delta_own(self):
+        if self.qty_owned is None or self.qty_bought is None: return -1
+
+        if self.qty_owned - self.qty_bought == 0:
+            return 100
+        else:
+            return float(self.qty_bought / (self.qty_owned - self.qty_bought)) * 100
 
     def days_ago(self) -> int:
+        assert self.filing_date is not None and self.trade_date is not None
         fd = dt.strptime(self.filing_date, "%Y-%m-%d")
         td = dt.strptime(self.trade_date,  "%Y-%m-%d")
         return (fd - td).days
@@ -57,8 +75,8 @@ def get_data(n_pages) -> list[Form]:
                 if i == 3:
                     form.ticker = text
                 if i == 5:
-                    form.insider_name = td.find("a")["href"]
-                    form.insider_name = "http://openinsider.com" + form.insider_name
+                    form.insider_name_link = td.find("a")["href"]
+                    form.insider_name_link = "http://openinsider.com" + form.insider_name_link
                 if i == 6:
                     form.buyer_title = text
                 if i == 8:
@@ -67,11 +85,6 @@ def get_data(n_pages) -> list[Form]:
                     form.qty_bought = int(text[1:].replace(",", "")) # remove plus sign at front of number and cast to int
                 if i == 10:
                     form.qty_owned = int(text.replace(",", ""))
-                
-                if form.qty_owned - form.qty_bought == 0:
-                    form.delta_own = 100
-                else:
-                    form.delta_own = float(form.qty_bought / (form.qty_owned - form.qty_bought)) * 100
 
                 form.company_link = f"http://openinsider.com/{form.ticker}"
 
@@ -297,53 +310,79 @@ def get_losers(trades: list[Trade]) -> list[Trade]:
             res.append(t)
     return res
 
-def get_historical_forms():
+def get_historical_forms() -> dict[str, Form]:
     base = "src/OpenInsider/Assets/Historical_Form4s"
     folders = os.listdir(base)
-    for folder in folders:
-        if not os.path.isdir(f"{base}/{folder}"): 
-            print(f"skipping {folder}")
-            continue
 
+    forms: dict[str, Form] = {}
+
+    for folder in folders:
+        if not os.path.isdir(f"{base}/{folder}"): continue
+        
+        print(f"Entering {folder}")
         contents = os.listdir(f"{base}/{folder}")
-        SUBMISSION, NON_DERIV_TRANS = pd.DataFrame(), pd.DataFrame()
+        SUBMISSION, NON_DERIV_TRANS, REPORTING_OWNER = None, None, None
+        fail_count = 0
+        form = Form()
         for name in contents:
             if name == "SUBMISSION.tsv":
-                SUBMISSION = pd.read_csv(f"{base}/{folder}/{name}", sep="\t", header=0) 
+                with open(f"{base}/{folder}/{name}", "r") as sf:
+                    SUBMISSION = csv.DictReader(sf, delimiter="\t")
+                    for row in SUBMISSION:
+                        if row["DOCUMENT_TYPE"] != "4": continue
+
+                        key = row["ACCESSION_NUMBER"]
+                        filing_date =   row["FILING_DATE"]
+
+                        filing_date = dt.strptime(filing_date, "%d-%b-%Y").strftime("%Y-%m-%d")
+                        try:
+                            forms[key].ticker = row["ISSUERTRADINGSYMBOL"]
+                            forms[key].company_name = row["ISSUERNAME"]
+                            forms[key].filing_date = filing_date
+                        except:
+                            # print(f"no form @ {key}")
+                            continue
 
             if name == "NONDERIV_TRANS.tsv":
-                NON_DERIV_TRANS = pd.read_csv(f"{base}/{folder}/{name}", sep="\t", header=0) 
+                with open(f"{base}/{folder}/{name}", "r") as nf:
+                    NON_DERIV_TRANS = csv.DictReader(nf, delimiter="\t")
+                    for row in NON_DERIV_TRANS:
+                        if row["TRANS_FORM_TYPE"] != "4" or row["TRANS_CODE"] != "P": continue
 
-        assert not SUBMISSION.empty and not NON_DERIV_TRANS.empty
+                        key = row["ACCESSION_NUMBER"]
+                        trans_date = dt.strptime(row["TRANS_DATE"], "%d-%b-%Y").strftime("%Y-%m-%d") # format = DD-MONTH_ABREIVATION-YYYY
+                        share_price = row["TRANS_PRICEPERSHARE"]
+                        total_shares = row["SHRS_OWND_FOLWNG_TRANS"]
+                        nshares = row["TRANS_SHARES"]
 
-        # SUBMISSION COLUMNS: ['ACCESSION_NUMBER', 'FILING_DATE', 'PERIOD_OF_REPORT', 'DATE_OF_ORIG_SUB', 'NO_SECURITIES_OWNED', 'NOT_SUBJECT_SEC16', 'FORM3_HOLDINGS_REPORTED', 'FORM4_TRANS_REPORTED', 'DOCUMENT_TYPE', 'ISSUERCIK', 'ISSUERNAME', 'ISSUERTRADINGSYMBOL', 'REMARKS']
-        # NON_DERIV_TRANS COLUMNS: 'ACCESSION_NUMBER', 'NONDERIV_TRANS_SK', 'SECURITY_TITLE', 'SECURITY_TITLE_FN', 'TRANS_DATE', 'TRANS_DATE_FN', 'DEEMED_EXECUTION_DATE', 'DEEMED_EXECUTION_DATE_FN', 'TRANS_FORM_TYPE', 'TRANS_CODE', 'EQUITY_SWAP_INVOLVED', 'EQUITY_SWAP_TRANS_CD_FN', 'TRANS_TIMELINESS', 'TRANS_TIMELINESS_FN', 'TRANS_SHARES', 'TRANS_SHARES_FN', 'TRANS_PRICEPERSHARE', 'TRANS_PRICEPERSHARE_FN', 'TRANS_ACQUIRED_DISP_CD', 'TRANS_ACQUIRED_DISP_CD_FN', 'SHRS_OWND_FOLWNG_TRANS', 'SHRS_OWND_FOLWNG_TRANS_FN', 'VALU_OWND_FOLWNG_TRANS', 'VALU_OWND_FOLWNG_TRANS_FN', 'DIRECT_INDIRECT_OWNERSHIP', 'DIRECT_INDIRECT_OWNERSHIP_FN', 'NATURE_OF_OWNERSHIP', 'NATURE_OF_OWNERSHIP_FN'
+                        form.trade_date = trans_date
+                        try:
+                            form.qty_bought = float(nshares)
+                            form.qty_owned = float(total_shares)
+                            form.price = float(share_price)
+                        except:
+                            # print(f"failed @ {key}")
+                            fail_count += 1
+                            continue
 
-        for i, row in NON_DERIV_TRANS.iterrows():
-            if row["TRANS_FORM_TYPE"] != 4:
-                print("Not form 4")
-                continue
+                        forms[key] = form
 
-            key = row["ACCESSION_NUMBER"]
-            trans_date = row["TRANS_DATE"]
-            trans_code = row["TRANS_CODE"]
-            nshares = float(row["TRANS_SHARES"])
-            share_price = float(row["TRANS_PRICEPERSHARE"])
-            total_shares = float(row["SHRS_OWND_FOLWNG_TRANS"])
-
-            submission = SUBMISSION.loc[SUBMISSION.ACCESSION_NUMBER == key]
-            ticker =        str(submission["ISSUERTRADINGSYMBOL"])
-            company_name =  str(submission["ISSUERNAME"])
-            filing_date =   str(submission["FILING_DATE"])
-
-            print(f"{trans_code}: {nshares} shares of {ticker} for {share_price} on {trans_date} (filed on {filing_date})")
-
-            if i == 2: break
-        # print(SUBMISSION.head(5))
-        # print(NON_DERIV_TRANS.head(5))
-        # print(NON_DERIV_TRANS.ACCESSION_NUMBER)
-
-        break
+            if name == "REPORTINGOWNER.tsv":
+                with open(f"{base}/{folder}/{name}", "r") as rf:
+                    REPORTING_OWNER = csv.DictReader(rf, delimiter="\t")      
+                    for row in REPORTING_OWNER:
+                        key = row["ACCESSION_NUMBER"]
+                        try:
+                            forms[key].insider_name = row["RPTOWNERNAME"]
+                            forms[key].insider_relationship = row["RPTOWNER_RELATIONSHIP"]
+                            forms[key].insider_title = row["RPTOWNER_TITLE"]
+                        except:
+                            # print(f"no form @ {key}")
+                            continue  
+    
+        print(f"{fail_count} Failures")
+        
+    return forms
     
 
 if __name__ == "__main__":
@@ -352,7 +391,11 @@ if __name__ == "__main__":
 
     # trades: list[Trade] = load_data("Trades")
 
-    get_historical_forms()
+    forms = get_historical_forms()
+    forms = [form for form in forms.values()]
+    print(len(forms))
+
+    print(forms[10000])
 
     #TODO: just download 5 years of data for every ticker
 
