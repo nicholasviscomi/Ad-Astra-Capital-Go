@@ -1,4 +1,3 @@
-import math
 from typing import Optional
 import requests
 from bs4 import BeautifulSoup
@@ -11,7 +10,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 import numpy as np
 import network as NN
-
+import os
 
 @dataclass
 class Form:
@@ -84,14 +83,14 @@ def save_data(data, fname):
     with open(f"src/OpenInsider/Assets/{fname}.pkl", "wb") as file:
         pickle.dump(data, file)
 
-def load_data(fname):
+def load_data(fname) -> list:
     with open(f"src/OpenInsider/Assets/{fname}.pkl", "rb") as file:
         data = pickle.load(file)
         return data
 
-def tickers_from_data(data):
+def tickers_from_data(forms):
     tickers = []
-    for form in data:
+    for form in forms:
         if form.ticker not in tickers:
             tickers.append(form.ticker)
     return tickers
@@ -298,44 +297,75 @@ def get_losers(trades: list[Trade]) -> list[Trade]:
             res.append(t)
     return res
 
+def get_historical_forms():
+    base = "src/OpenInsider/Assets/Historical_Form4s"
+    folders = os.listdir(base)
+    for folder in folders:
+        if not os.path.isdir(f"{base}/{folder}"): 
+            print(f"skipping {folder}")
+            continue
+
+        contents = os.listdir(f"{base}/{folder}")
+        SUBMISSION, NON_DERIV_TRANS = pd.DataFrame(), pd.DataFrame()
+        for name in contents:
+            if name == "SUBMISSION.tsv":
+                SUBMISSION = pd.read_csv(f"{base}/{folder}/{name}", sep="\t", header=0) 
+
+            if name == "NONDERIV_TRANS.tsv":
+                NON_DERIV_TRANS = pd.read_csv(f"{base}/{folder}/{name}", sep="\t", header=0) 
+
+        assert not SUBMISSION.empty and not NON_DERIV_TRANS.empty
+
+        # SUBMISSION COLUMNS: ['ACCESSION_NUMBER', 'FILING_DATE', 'PERIOD_OF_REPORT', 'DATE_OF_ORIG_SUB', 'NO_SECURITIES_OWNED', 'NOT_SUBJECT_SEC16', 'FORM3_HOLDINGS_REPORTED', 'FORM4_TRANS_REPORTED', 'DOCUMENT_TYPE', 'ISSUERCIK', 'ISSUERNAME', 'ISSUERTRADINGSYMBOL', 'REMARKS']
+        # NON_DERIV_TRANS COLUMNS: 'ACCESSION_NUMBER', 'NONDERIV_TRANS_SK', 'SECURITY_TITLE', 'SECURITY_TITLE_FN', 'TRANS_DATE', 'TRANS_DATE_FN', 'DEEMED_EXECUTION_DATE', 'DEEMED_EXECUTION_DATE_FN', 'TRANS_FORM_TYPE', 'TRANS_CODE', 'EQUITY_SWAP_INVOLVED', 'EQUITY_SWAP_TRANS_CD_FN', 'TRANS_TIMELINESS', 'TRANS_TIMELINESS_FN', 'TRANS_SHARES', 'TRANS_SHARES_FN', 'TRANS_PRICEPERSHARE', 'TRANS_PRICEPERSHARE_FN', 'TRANS_ACQUIRED_DISP_CD', 'TRANS_ACQUIRED_DISP_CD_FN', 'SHRS_OWND_FOLWNG_TRANS', 'SHRS_OWND_FOLWNG_TRANS_FN', 'VALU_OWND_FOLWNG_TRANS', 'VALU_OWND_FOLWNG_TRANS_FN', 'DIRECT_INDIRECT_OWNERSHIP', 'DIRECT_INDIRECT_OWNERSHIP_FN', 'NATURE_OF_OWNERSHIP', 'NATURE_OF_OWNERSHIP_FN'
+
+        for i, row in NON_DERIV_TRANS.iterrows():
+            if row["TRANS_FORM_TYPE"] != 4:
+                print("Not form 4")
+                continue
+
+            key = row["ACCESSION_NUMBER"]
+            trans_date = row["TRANS_DATE"]
+            trans_code = row["TRANS_CODE"]
+            nshares = float(row["TRANS_SHARES"])
+            share_price = float(row["TRANS_PRICEPERSHARE"])
+            total_shares = float(row["SHRS_OWND_FOLWNG_TRANS"])
+
+            submission = SUBMISSION.loc[SUBMISSION.ACCESSION_NUMBER == key]
+            ticker =        str(submission["ISSUERTRADINGSYMBOL"])
+            company_name =  str(submission["ISSUERNAME"])
+            filing_date =   str(submission["FILING_DATE"])
+
+            print(f"{trans_code}: {nshares} shares of {ticker} for {share_price} on {trans_date} (filed on {filing_date})")
+
+            if i == 2: break
+        # print(SUBMISSION.head(5))
+        # print(NON_DERIV_TRANS.head(5))
+        # print(NON_DERIV_TRANS.ACCESSION_NUMBER)
+
+        break
+    
+
 if __name__ == "__main__":
 
-    trades: list[Trade] = load_data("Trimmed")
-    
-    forms: list[Form] = load_data("Forms")
+    # forms: list[Form] = load_data("Forms")
 
-    print(trades[0].form)
-    new_trades = trades
-    for i in range(42, len(trades)):
-        new_trades[i - 42].form = forms[i]
+    # trades: list[Trade] = load_data("Trades")
 
-    for i in range(len(trades)):
-        if trades[i].form != new_trades[i].form:
-            print("AHHHHHHHHH")
+    get_historical_forms()
 
-    
-    print(new_trades[0].form)
+    #TODO: just download 5 years of data for every ticker
 
-    save_data(new_trades, "Trades")
-    # for i in range(len(trades)):
-    #     if i % 1000 == 0:
-    #         print(trades[i].form)
-    #     trades[i].form = forms[forms.index(trades[i].form)]
+    #NOTE: trade volume falls off as a predictor of profitability near 1 million shares because those big trades
+    #      attract the attention of the SEC. Thus, a multi million share trade likely won't be acting on some really 
+    #      good insider information because they don't want to get thrown in jail
 
-    # for t in trades:
-    #     show_trade(t, True)
+    #TODO: active vs. passive investments by looking at preceding stock movements
+    #NOTE: active buy = has dropped less than 10% in the prevoius 6 months. IOW, the trader is *likely* not buying because 
+    #      the stock is at a super low point. Hints at an upcoming catalyst 🤑
 
-    # i,j=0,0
-    # PLOTS_PER_ROW = 5
-    # fig, axs = plt.subplots(math.ceil(len(df.columns)/PLOTS_PER_ROW),PLOTS_PER_ROW, figsize=(20, 60))
-    # for col in df.columns:
-    #     axs[i][j].scatter(df['target_col'], df[col], s=3)
-    #     axs[i][j].set_ylabel(col)
-    #     j+=1
-    #     if j%PLOTS_PER_ROW==0:
-    #         i+=1
-    #         j=0
-    # plt.show()
+    #TODO: purchase month signals
+    #NOTE: this refers to past buying/selling within the firm
 
     #TODO: get dictionary of "insider name" : [forms...]
     #NOTE: be careful not to get any sales!!!!!
@@ -343,5 +373,3 @@ if __name__ == "__main__":
     #TODO: get dictionary of "ticker" : [forms...]
 
     #TODO: quantify track record of both the insiders and the companies
-
-    
