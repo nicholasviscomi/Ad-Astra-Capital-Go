@@ -29,6 +29,7 @@ class Form:
     buyer_title: Optional[str] = None
     
     #Source: SEC Bulk Data
+    accession_number: Optional[str] = None
     insider_name: Optional[str] = None 
     company_name: Optional[str] = None
     insider_relationship: Optional[str] = None 
@@ -101,12 +102,12 @@ def load_data(fname) -> list:
         data = pickle.load(file)
         return data
 
-def tickers_from_data(forms):
-    tickers = []
+def tickers_from_data(forms: list[Form]):
+    tickers = {}
     for form in forms:
-        if form.ticker not in tickers:
-            tickers.append(form.ticker)
-    return tickers
+        tickers[form.ticker] = 1
+
+    return [key for key in tickers.keys()]
 
 @dataclass
 class Candle:
@@ -296,22 +297,17 @@ def show_trade(trade: Trade, show_peaks: bool):
     ax.set_title(title)
     plt.show()
 
-def get_winners(trades: list[Trade]) -> list[Trade]:
-    res = []
-    for t in trades:
-        if t.calc_profit() > 0:
-            res.append(t)
-    return res
+def read_in_tsv(file):
+    """
+    Take in a tsv from the historical form 4s folder and return a dictionary where
+    the keys are accession numbers and the values are the rest of the row
+    - removes any non-form 4s and transactions that are not purchases
+    """
 
-def get_losers(trades: list[Trade]) -> list[Trade]:
-    res = []
-    for t in trades:
-        if t.calc_profit() < 0:
-            res.append(t)
-    return res
+    return 
 
 def get_historical_forms() -> dict[str, Form]:
-    base = "src/OpenInsider/Assets/Historical_Form4s"
+    base = "src/OpenInsider/Assets/Historical_SEC_Filings"
     folders = os.listdir(base)
 
     forms: dict[str, Form] = {}
@@ -323,64 +319,67 @@ def get_historical_forms() -> dict[str, Form]:
         contents = os.listdir(f"{base}/{folder}")
         SUBMISSION, NON_DERIV_TRANS, REPORTING_OWNER = None, None, None
         fail_count = 0
-        form = Form()
-        for name in contents:
-            if name == "SUBMISSION.tsv":
-                with open(f"{base}/{folder}/{name}", "r") as sf:
-                    SUBMISSION = csv.DictReader(sf, delimiter="\t")
-                    for row in SUBMISSION:
-                        if row["DOCUMENT_TYPE"] != "4": continue
 
-                        key = row["ACCESSION_NUMBER"]
-                        filing_date =   row["FILING_DATE"]
+        with open(f"{base}/{folder}/NONDERIV_TRANS.tsv", "r") as nf:
+            NON_DERIV_TRANS = csv.DictReader(nf, delimiter="\t")
+            for row in NON_DERIV_TRANS:
+                if not (row["TRANS_FORM_TYPE"] == "4" and row["TRANS_CODE"] == "P"): continue
 
-                        filing_date = dt.strptime(filing_date, "%d-%b-%Y").strftime("%Y-%m-%d")
-                        try:
-                            forms[key].ticker = row["ISSUERTRADINGSYMBOL"]
-                            forms[key].company_name = row["ISSUERNAME"]
-                            forms[key].filing_date = filing_date
-                        except:
-                            # print(f"no form @ {key}")
-                            continue
+                key = row["ACCESSION_NUMBER"]
+                trans_date = dt.strptime(row["TRANS_DATE"], "%d-%b-%Y").strftime("%Y-%m-%d") # format = DD-MONTH_ABREIVATION-YYYY
+                share_price = row["TRANS_PRICEPERSHARE"]
+                total_shares = row["SHRS_OWND_FOLWNG_TRANS"]
+                nshares = row["TRANS_SHARES"]
 
-            if name == "NONDERIV_TRANS.tsv":
-                with open(f"{base}/{folder}/{name}", "r") as nf:
-                    NON_DERIV_TRANS = csv.DictReader(nf, delimiter="\t")
-                    for row in NON_DERIV_TRANS:
-                        if row["TRANS_FORM_TYPE"] != "4" or row["TRANS_CODE"] != "P": continue
-
-                        key = row["ACCESSION_NUMBER"]
-                        trans_date = dt.strptime(row["TRANS_DATE"], "%d-%b-%Y").strftime("%Y-%m-%d") # format = DD-MONTH_ABREIVATION-YYYY
-                        share_price = row["TRANS_PRICEPERSHARE"]
-                        total_shares = row["SHRS_OWND_FOLWNG_TRANS"]
-                        nshares = row["TRANS_SHARES"]
-
+                try:
+                    if key not in forms:
+                        form = Form(accession_number=key)
                         form.trade_date = trans_date
-                        try:
-                            form.qty_bought = float(nshares)
-                            form.qty_owned = float(total_shares)
-                            form.price = float(share_price)
-                        except:
-                            # print(f"failed @ {key}")
-                            fail_count += 1
-                            continue
-
+                        form.qty_bought = float(nshares)
+                        form.qty_owned = float(total_shares)
+                        form.price = float(share_price)
                         forms[key] = form
+                    else:
+                        print(f"DUPLICATE: {key}")
+                except:
+                    # print(f"failed @ {key}")
+                    fail_count += 1
+                    continue
 
-            if name == "REPORTINGOWNER.tsv":
-                with open(f"{base}/{folder}/{name}", "r") as rf:
-                    REPORTING_OWNER = csv.DictReader(rf, delimiter="\t")      
-                    for row in REPORTING_OWNER:
-                        key = row["ACCESSION_NUMBER"]
-                        try:
-                            forms[key].insider_name = row["RPTOWNERNAME"]
-                            forms[key].insider_relationship = row["RPTOWNER_RELATIONSHIP"]
-                            forms[key].insider_title = row["RPTOWNER_TITLE"]
-                        except:
-                            # print(f"no form @ {key}")
-                            continue  
+        with open(f"{base}/{folder}/SUBMISSION.tsv", "r") as sf:
+            SUBMISSION = csv.DictReader(sf, delimiter="\t")
+            for row in SUBMISSION:
+                if row["DOCUMENT_TYPE"] != "4": continue
+
+                key = row["ACCESSION_NUMBER"]
+                filing_date =   row["FILING_DATE"]
+
+                filing_date = dt.strptime(filing_date, "%d-%b-%Y").strftime("%Y-%m-%d")
+                try:
+                    if key in forms:
+                        forms[key].ticker = row["ISSUERTRADINGSYMBOL"]
+                        print(forms[key].ticker)
+                        forms[key].company_name = row["ISSUERNAME"]
+                        forms[key].filing_date = filing_date
+                except:
+                    # print(f"no form @ {key}")
+                    continue
+
+        with open(f"{base}/{folder}/REPORTINGOWNER.tsv", "r") as rf:
+            REPORTING_OWNER = csv.DictReader(rf, delimiter="\t")      
+            for row in REPORTING_OWNER:
+                key = row["ACCESSION_NUMBER"]
+                try:
+                    if key in forms:
+                        forms[key].insider_name = row["RPTOWNERNAME"]
+                        forms[key].insider_relationship = row["RPTOWNER_RELATIONSHIP"]
+                        forms[key].insider_title = row["RPTOWNER_TITLE"]
+                except:
+                    # print(f"no form @ {key}")
+                    continue  
     
         print(f"{fail_count} Failures")
+        break
         
     return forms
     
@@ -392,16 +391,25 @@ if __name__ == "__main__":
     # trades: list[Trade] = load_data("Trades")
 
     forms = get_historical_forms()
-    forms = [form for form in forms.values()]
+    for key, value in forms.items():
+        print(f"{key}: {value.ticker}")
+
+    forms = [f for f in forms.values()]
     print(len(forms))
 
-    print(forms[10000])
+    # forms: list[Form] = load_data()
+    # print(len(forms))
+
+    print(tickers_from_data(forms))
+    print(len(tickers_from_data(forms)))
+
 
     #TODO: just download 5 years of data for every ticker
 
     #NOTE: trade volume falls off as a predictor of profitability near 1 million shares because those big trades
     #      attract the attention of the SEC. Thus, a multi million share trade likely won't be acting on some really 
     #      good insider information because they don't want to get thrown in jail
+    # ?
 
     #TODO: active vs. passive investments by looking at preceding stock movements
     #NOTE: active buy = has dropped less than 10% in the prevoius 6 months. IOW, the trader is *likely* not buying because 
@@ -411,7 +419,7 @@ if __name__ == "__main__":
     #NOTE: this refers to past buying/selling within the firm
 
     #TODO: get dictionary of "insider name" : [forms...]
-    #NOTE: be careful not to get any sales!!!!!
+    #! be careful not to get any sales!!!!!
 
     #TODO: get dictionary of "ticker" : [forms...]
 
