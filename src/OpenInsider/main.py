@@ -297,16 +297,7 @@ def show_trade(trade: Trade, show_peaks: bool):
     ax.set_title(title)
     plt.show()
 
-def read_in_tsv(file):
-    """
-    Take in a tsv from the historical form 4s folder and return a dictionary where
-    the keys are accession numbers and the values are the rest of the row
-    - removes any non-form 4s and transactions that are not purchases
-    """
-
-    return 
-
-def get_historical_forms() -> dict[str, Form]:
+def parse_historical_filings() -> dict[str, Form]:
     base = "src/OpenInsider/Assets/Historical_SEC_Filings"
     folders = os.listdir(base)
 
@@ -316,7 +307,6 @@ def get_historical_forms() -> dict[str, Form]:
         if not os.path.isdir(f"{base}/{folder}"): continue
         
         print(f"Entering {folder}")
-        contents = os.listdir(f"{base}/{folder}")
         SUBMISSION, NON_DERIV_TRANS, REPORTING_OWNER = None, None, None
         fail_count = 0
 
@@ -339,8 +329,8 @@ def get_historical_forms() -> dict[str, Form]:
                         form.qty_owned = float(total_shares)
                         form.price = float(share_price)
                         forms[key] = form
-                    else:
-                        print(f"DUPLICATE: {key}")
+                    # else:
+                        # print(f"DUPLICATE: {key}")
                 except:
                     # print(f"failed @ {key}")
                     fail_count += 1
@@ -358,7 +348,7 @@ def get_historical_forms() -> dict[str, Form]:
                 try:
                     if key in forms:
                         forms[key].ticker = row["ISSUERTRADINGSYMBOL"]
-                        print(forms[key].ticker)
+                        # print(forms[key].ticker)
                         forms[key].company_name = row["ISSUERNAME"]
                         forms[key].filing_date = filing_date
                 except:
@@ -379,10 +369,29 @@ def get_historical_forms() -> dict[str, Form]:
                     continue  
     
         print(f"{fail_count} Failures")
-        break
         
     return forms
     
+def clean_historical_forms(forms: list[Form]) -> list[Form]:
+    """
+    -remove all special characters from the tickers\n
+    -remove any forms whose ticker is "n/a" or some variation therein\n
+    -returns the same list without 
+    """
+
+    cleaned = []
+    for i, f in enumerate(forms):
+        if f.ticker is None: continue
+        if any(c in "~!@#$%^&*()_+{}[];':<>?`.,/" for c in f.ticker):
+            forms[i].ticker = "".join([i for i in f.ticker if i.isalpha()])
+        if "na" in f.ticker.lower():
+            continue
+        
+        forms[i].ticker = f.ticker.upper()
+        
+        cleaned.append(forms[i])
+
+    return cleaned
 
 if __name__ == "__main__":
 
@@ -390,12 +399,14 @@ if __name__ == "__main__":
 
     # trades: list[Trade] = load_data("Trades")
 
-    forms = get_historical_forms()
-    for key, value in forms.items():
-        print(f"{key}: {value.ticker}")
+    forms = parse_historical_filings()
+    forms = clean_historical_forms([f for f in forms.values()])
 
-    forms = [f for f in forms.values()]
-    print(len(forms))
+    # for key, value in forms.items():
+    #     print(f"{key}: {value.ticker}")
+
+    # print(len(forms))
+    # print(forms[1000])
 
     # forms: list[Form] = load_data()
     # print(len(forms))
