@@ -96,6 +96,9 @@ def get_data(n_pages) -> list[Form]:
     return forms
 
 def save_data(data, fname):
+    """
+    base path is Assets folder
+    """
     with open(f"src/OpenInsider/Assets/{fname}.pkl", "wb") as file:
         pickle.dump(data, file)
 
@@ -456,8 +459,29 @@ def get_historical_data(tickers: list[str]):
         except:
             pass
 
-def get_ticker(ticker: str):
+def get_ticker_data(ticker: str):
     return load_data(f"Historical_Stock_Data/{ticker}")
+
+def show_hist_trade(form: Form):
+    if form.ticker is None: return
+    if form.filing_date is None: return
+
+    data = get_ticker_data(form.ticker)
+
+    dates = [candle.date for candle in data]
+    fd_components = form.filing_date.replace("-", "/").split("/")
+
+    #NOTE: make sure the data is starting at the filing date!
+    new_date = f"{fd_components[1]}/{fd_components[2]}/{fd_components[0]}"
+    i = dates.index(new_date)
+
+    if (i + 100) < len(data):
+        data = data[i : i + 100]
+
+    show_trade(Trade(
+        form,
+        data
+    ), True)
 
 if __name__ == "__main__":
 
@@ -465,19 +489,21 @@ if __name__ == "__main__":
 
     # trades: list[Trade] = load_data("Trades")
 
-    forms = parse_historical_filings()
-    forms = clean_historical_forms([f for f in forms.values()])
+    # forms = parse_historical_filings()
+    # forms = clean_historical_forms([f for f in forms.values()])
 
-    print(len(tickers_from_data(forms)))
+    forms = load_data("HistForms")
 
-    print(len(os.listdir("src/OpenInsider/Assets/Historical_Stock_Data")))
-    
-    #TODO: just download 5 years of data for every ticker
+    # for f in os.listdir("src/OpenInsider/Assets/Historical_Stock_Data"):
+    #     data = load_data(f"Historical_Stock_Data/{f.split(sep='.')[0]}")
+    #     data = data[::-1]
+    #     save_data(data, f"Historical_Stock_Data/{f.split(sep='.')[0]}")
+
+    show_hist_trade(forms[1000])
 
     #NOTE: trade volume falls off as a predictor of profitability near 1 million shares because those big trades
     #      attract the attention of the SEC. Thus, a multi million share trade likely won't be acting on some really 
     #      good insider information because they don't want to get thrown in jail
-    # ?
 
     #TODO: active vs. passive investments by looking at preceding stock movements
     #NOTE: active buy = has dropped less than 10% in the prevoius 6 months. IOW, the trader is *likely* not buying because 
@@ -486,9 +512,8 @@ if __name__ == "__main__":
     #TODO: purchase month signals
     #NOTE: this refers to past buying/selling within the firm
 
-    #TODO: get dictionary of "insider name" : [forms...]
-    #! be careful not to get any sales!!!!!
+    #? TODO: get dictionary of "insider name" : [forms...]
 
-    #TODO: get dictionary of "ticker" : [forms...]
+    #? TODO: get dictionary of "ticker" : [forms...]
 
     #TODO: quantify track record of both the insiders and the companies
