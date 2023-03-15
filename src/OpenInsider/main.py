@@ -12,6 +12,7 @@ import numpy as np
 import network as NN
 import os
 import csv
+import scipy.signal
 
 @dataclass
 class Form:
@@ -35,6 +36,12 @@ class Form:
     insider_relationship: Optional[str] = None 
     insider_title: Optional[str] = None 
 
+    def __eq__(self, other) -> bool:
+        return self.filing_date == other.filing_date and self.trade_date == other.trade_date and self.ticker == other.ticker and self.price == other.price and self.qty_bought == other.qty_bought and self.qty_owned == self.qty_owned
+    
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)
+    
     def delta_own(self):
         if self.qty_owned is None or self.qty_bought is None: return -1
 
@@ -49,11 +56,22 @@ class Form:
         td = dt.strptime(self.trade_date,  "%Y-%m-%d")
         return (fd - td).days
     
-    def __eq__(self, other) -> bool:
-        return self.filing_date == other.filing_date and self.trade_date == other.trade_date and self.ticker == other.ticker and self.price == other.price and self.qty_bought == other.qty_bought and self.qty_owned == self.qty_owned
+    def fd_index(self) -> int:
+        """
+        - returns the index of the filing date within the Historical Stock Data\n
+        - returns -1 if anything fails (i.e. there is no data available)
+        """
+        if self.ticker is None or self.filing_date is None: return -1
+
+        data = get_ticker_data(self.ticker)
+        if data is None: return -1
+
+        dates = [candle.date for candle in data]
+        fd_components = self.filing_date.replace("-", "/").split("/")
+
+        new_date = f"{fd_components[1]}/{fd_components[2]}/{fd_components[0]}"
+        return dates.index(new_date)
     
-    def __ne__(self, other) -> bool:
-        return not self.__eq__(other)
 
 
 def get_data(n_pages) -> list[Form]:
@@ -128,11 +146,11 @@ class Trade:
     form: Form
     candles: list[Candle]
 
-    def calc_profit(self):
+    def calc_profit(self, shift):
         profit: float = 0.0
 
         closes = [c.c for c in self.candles]
-        _, peaks = get_peaks(closes)
+        _, peaks = get_peaks(closes, shift)
         
         if len(peaks) != 0:
             for peak in peaks:
@@ -247,29 +265,41 @@ def moving_avg(data: list, length: int):
         new_data.append(sum_(window)/len(window))
     return new_data
 
-def get_peaks(price_data: list):
+def pct_change(a, b):
+    return ((b - a) / a) * 100
+
+def get_peaks(price_data: list, shift: int):
+    """
+    @param price_data: list of prices (typically the closing prices)\n
+    @param shift: move each peak to the right n-days because seldom will you exit at the true peak of a stock\n
+    """
     ma = moving_avg(price_data, 7)
 
     dist = 7
     height_multiplier = 1.05
     peaks, _ = find_peaks(ma, distance=dist, height=ma[0] * height_multiplier, width=5) # one week between peaks and peak must be a 5% increase from day 0
 
-    # if the price didn't go up enough to find a peak with a 5% increase, remove
-    # the height multiplier and slowly decrease the distance between peaks until
-    # a peak is found. This is necesarry for stagnating stock data (seen in trades[1500:1600:20])
+
     while len(peaks) == 0 and dist >= 1:
         peaks, _ = find_peaks(ma, distance=dist, width=5) # one week between peaks and peak must be a 5% increase from day 0
         dist -= 1
+
+    if pct_change(ma[0], ma[-1]) > 5:
+        peaks = list(peaks)
+
+        avg_peak_height = sum_(peaks)/len(peaks)
+        if ma[-2] > avg_peak_height:
+            peaks.append(len(ma) - 2) # add second index from the end
 
     if len(peaks) == 0: return [], []
 
     for i in range(len(peaks)):
         if i < len(peaks) - 1:
-            peaks[i] += 1 # shift each peak to the right one because seldom will you exit at the true peak of a stock
+            peaks[i] += shift 
 
     return ma, peaks
 
-def show_trade(trade: Trade, show_peaks: bool):
+def show_trade(trade: Trade, show_peaks: bool, shift: int):
     prices = pd.DataFrame({
         "high"  : [candle.h  for candle in trade.candles],
         "low"   : [candle.l  for candle in trade.candles],
@@ -291,7 +321,7 @@ def show_trade(trade: Trade, show_peaks: bool):
     ax.bar(red.index, red.low   - red.close, w2, red.close, color='black') # low price
 
     if show_peaks:
-        ma, peaks = get_peaks(list(prices.close.array))
+        ma, peaks = get_peaks(list(prices.close.array), shift)
         ax.plot(ma)
         
         for peak in peaks:
@@ -460,20 +490,18 @@ def get_historical_data(tickers: list[str]):
             pass
 
 def get_ticker_data(ticker: str):
-    return load_data(f"Historical_Stock_Data/{ticker}")
+    contents = os.listdir(f"src/OpenInsider/Assets/Historical_Stock_Data")
+    if f"{ticker}.pkl" not in contents: return None
+    else: return load_data(f"Historical_Stock_Data/{ticker}")
 
 def show_hist_trade(form: Form):
     if form.ticker is None: return
     if form.filing_date is None: return
 
     data = get_ticker_data(form.ticker)
+    if data is None: return
 
-    dates = [candle.date for candle in data]
-    fd_components = form.filing_date.replace("-", "/").split("/")
-
-    #NOTE: make sure the data is starting at the filing date!
-    new_date = f"{fd_components[1]}/{fd_components[2]}/{fd_components[0]}"
-    i = dates.index(new_date)
+    i = form.fd_index()
 
     if (i + 100) < len(data):
         data = data[i : i + 100]
@@ -481,25 +509,15 @@ def show_hist_trade(form: Form):
     show_trade(Trade(
         form,
         data
-    ), True)
+    ), True, shift=3)
 
 if __name__ == "__main__":
+    forms: list[Form] = load_data("HistForms")
 
-    # forms: list[Form] = load_data("Forms")
-
-    # trades: list[Trade] = load_data("Trades")
-
-    # forms = parse_historical_filings()
-    # forms = clean_historical_forms([f for f in forms.values()])
-
-    forms = load_data("HistForms")
-
-    # for f in os.listdir("src/OpenInsider/Assets/Historical_Stock_Data"):
-    #     data = load_data(f"Historical_Stock_Data/{f.split(sep='.')[0]}")
-    #     data = data[::-1]
-    #     save_data(data, f"Historical_Stock_Data/{f.split(sep='.')[0]}")
-
-    show_hist_trade(forms[1000])
+    # problem forms: QNBC peak is way too small
+    for form in forms[:200:20]:
+        # if form.ticker == "CMT":
+        show_hist_trade(form)
 
     #NOTE: trade volume falls off as a predictor of profitability near 1 million shares because those big trades
     #      attract the attention of the SEC. Thus, a multi million share trade likely won't be acting on some really 
