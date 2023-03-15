@@ -63,10 +63,12 @@ def get_data(n_pages) -> list[Form]:
         page = requests.get(URL)
         soup = BeautifulSoup(page.content, "html.parser")
 
-        table = soup.find("table", class_="tinytable").find("tbody")
+        table = soup.find("table", class_="tinytable")
+        if table is None: continue
+        table = table.find("tbody")
 
-        for row in table.find_all("tr"):
-            form = Form("", "", "", -1.0, -1, -1, -1, "", "", "")
+        for row in table.find_all("tr"): #type: ignore
+            form = Form()
             for i, td in enumerate(row.find_all("td")):
                 text = td.get_text().strip()
                 if i == 1:
@@ -197,6 +199,7 @@ def get_trades_from_data(forms: list[Form]):
 
             # find the index of the filing date within trade.candles
             dates = [candle.date for candle in trade.candles]
+            if form.filing_date is None: continue
             fd_components = form.filing_date.replace("-", "/").split("/")
 
             #NOTE: make sure the data is starting at the filing date!
@@ -393,6 +396,69 @@ def clean_historical_forms(forms: list[Form]) -> list[Form]:
 
     return cleaned
 
+def get_historical_data(tickers: list[str]):
+    for ticker in tickers:
+        to_date = dt.today()
+        url = f"https://api.nasdaq.com/api/quote/{ticker}/historical?assetclass=stocks&fromdate=2018-03-14&limit=9999&todate={date(to_date.year, to_date.month, to_date.day)}"
+        print(f"Request sent to: {url}")
+        headers = {
+            "authority": "api.nasdaq.com",
+            "method": "GET",
+            "path": "/api/quote/AAPL/historical?assetclass=stocks&fromdate=2023-01-22&limit=9999&todate=2023-02-22",
+            "scheme": "https",
+            "accept": "application/json, text/plain, */*",
+            "accept-encoding": "gzip, deflate, br",
+            "accept-language": "en-US,en;q=0.5",
+            "origin": "https://www.nasdaq.com",
+            "referer": "https://www.nasdaq.com/",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-site",
+            "sec-gpc": "1",
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+        }
+        
+        candles: list[Candle] = []
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+
+            if response.status_code != 200: 
+                print(f"Failed status code: {ticker}")
+                continue
+            if response.json()["data"] is None or response.json()["data"]["tradesTable"] is None or response.json()["data"]["tradesTable"]["rows"] is None: 
+                print(f"❌Json response was none: {ticker}; url: {url}")
+                continue
+
+            for row in response.json()["data"]["tradesTable"]["rows"]:
+
+                o = row["open"][1:].replace(",", "")
+                cl = row["close"][1:].replace(",", "")
+                h = row["high"][1:].replace(",", "")
+                l = row["low"][1:].replace(",", "")
+                v = row["volume"].replace(",", "")
+
+                c = Candle(
+                    row["date"], 
+                    float(o)  if o  != 'N/A' else -1,
+                    float(cl) if cl != 'N/A' else -1, 
+                    float(h)  if h  != 'N/A' else -1, 
+                    float(l)  if l  != 'N/A' else -1, 
+                    int(v)    if v  != 'N/A' else -1
+                )
+                candles.append(c)
+            
+            save_data(candles, f"/Historical_Stock_Data/{ticker}")
+            print("✅Success")
+        except requests.exceptions.RequestException:
+            pass
+        except ValueError:
+            pass
+        except:
+            pass
+
+def get_ticker(ticker: str):
+    return load_data(f"Historical_Stock_Data/{ticker}")
+
 if __name__ == "__main__":
 
     # forms: list[Form] = load_data("Forms")
@@ -402,19 +468,10 @@ if __name__ == "__main__":
     forms = parse_historical_filings()
     forms = clean_historical_forms([f for f in forms.values()])
 
-    # for key, value in forms.items():
-    #     print(f"{key}: {value.ticker}")
-
-    # print(len(forms))
-    # print(forms[1000])
-
-    # forms: list[Form] = load_data()
-    # print(len(forms))
-
-    print(tickers_from_data(forms))
     print(len(tickers_from_data(forms)))
 
-
+    print(len(os.listdir("src/OpenInsider/Assets/Historical_Stock_Data")))
+    
     #TODO: just download 5 years of data for every ticker
 
     #NOTE: trade volume falls off as a predictor of profitability near 1 million shares because those big trades
