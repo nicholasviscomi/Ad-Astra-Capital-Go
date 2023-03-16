@@ -12,7 +12,6 @@ import numpy as np
 import network as NN
 import os
 import csv
-import scipy.signal
 
 @dataclass
 class Form:
@@ -146,21 +145,25 @@ class Trade:
     form: Form
     candles: list[Candle]
 
-    def calc_profit(self, shift):
-        profit: float = 0.0
+    def calc_profit(self, n_days, shift):
+        """
+        @param n_days is how many days after the filing date the calculations should consider\n
+        @param shift is how many days each peak should be shifted to the right by
+        """
+        avg_peak_val: float = 0.0
 
-        closes = [c.c for c in self.candles]
+        closes = [c.c for c in self.candles[:n_days]]
         _, peaks = get_peaks(closes, shift)
         
         if len(peaks) != 0:
             for peak in peaks:
-                profit += self.candles[peak].c
-                profit /= len(peaks)
-                return (profit / self.candles[0].c * 100) - 100
+                avg_peak_val += self.candles[peak].c
+            avg_peak_val /= len(peaks)
+
+            return pct_change(self.candles[0].c, avg_peak_val)
         
-        # function needs to return a value so the sorted() function doesn't yell at me
-        return sum_(closes) / len(closes)
-        # return None
+        # if there are no peaks (sad face), return absolute change
+        return pct_change(closes[0], closes[-1])
 
 
 def get_trades_from_data(forms: list[Form]):
@@ -265,8 +268,8 @@ def moving_avg(data: list, length: int):
         new_data.append(sum_(window)/len(window))
     return new_data
 
-def pct_change(a, b):
-    return ((b - a) / a) * 100
+def pct_change(from_, to_):
+    return ((to_ - from_) / from_) * 100
 
 def get_peaks(price_data: list, shift: int):
     """
@@ -287,7 +290,11 @@ def get_peaks(price_data: list, shift: int):
     if pct_change(ma[0], ma[-1]) > 5:
         peaks = list(peaks)
 
-        avg_peak_height = sum_(peaks)/len(peaks)
+        s = 0.0
+        for p in peaks:
+            s += ma[p]
+
+        avg_peak_height = s/len(peaks)
         if ma[-2] > avg_peak_height:
             peaks.append(len(ma) - 2) # add second index from the end
 
@@ -299,7 +306,7 @@ def get_peaks(price_data: list, shift: int):
 
     return ma, peaks
 
-def show_trade(trade: Trade, show_peaks: bool, shift: int):
+def show_trade(trade: Trade, show_peaks: bool, fd_index: Optional[int] = None):
     prices = pd.DataFrame({
         "high"  : [candle.h  for candle in trade.candles],
         "low"   : [candle.l  for candle in trade.candles],
@@ -320,16 +327,17 @@ def show_trade(trade: Trade, show_peaks: bool, shift: int):
     ax.bar(red.index, red.high  - red.open, w2, red.open, color='black') # high price
     ax.bar(red.index, red.low   - red.close, w2, red.close, color='black') # low price
 
+    ma, peaks = get_peaks(list(prices.close.array), 3)
     if show_peaks:
-        ma, peaks = get_peaks(list(prices.close.array), shift)
         ax.plot(ma)
         
         for peak in peaks:
             ax.plot(peak, ma[peak], "bo")
 
-        
+    if fd_index is not None:
+        ax.plot(fd_index, ma[fd_index], "ro")
 
-    title = f"{trade.form.ticker} @ {trade.candles[0].date} (FD: {trade.form.filing_date}, TD: {trade.form.trade_date})"
+    title = f"{trade.form.ticker} @ {trade.candles[0].date} (FD: {trade.form.filing_date}) Profit = {trade.calc_profit(100, 2):.2f}%"
     ax.set_title(title)
     plt.show()
 
@@ -494,7 +502,11 @@ def get_ticker_data(ticker: str):
     if f"{ticker}.pkl" not in contents: return None
     else: return load_data(f"Historical_Stock_Data/{ticker}")
 
-def show_hist_trade(form: Form):
+def show_hist_trade(form: Form, window: tuple[int, int]):
+    """
+    @param window is a tuple of how many candles should be included before and after the filing date\n
+    \t --> i.e. (10, 100) means to show from 10 days before to 100 days after
+    """
     if form.ticker is None: return
     if form.filing_date is None: return
 
@@ -503,21 +515,24 @@ def show_hist_trade(form: Form):
 
     i = form.fd_index()
 
-    if (i + 100) < len(data):
-        data = data[i : i + 100]
+    start = i - window[0] if i - window[0] >= 0 else 0
+    end = i + window[1] if i + window[1] < len(data) else len(data) - 1
+    print(f"{start} --> {end} ({len(data)}, {i})")
+    data = data[start : end]
 
     show_trade(Trade(
         form,
         data
-    ), True, shift=3)
+    ), True, fd_index=window[0])
 
 if __name__ == "__main__":
     forms: list[Form] = load_data("HistForms")
 
-    # problem forms: QNBC peak is way too small
-    for form in forms[:200:20]:
-        # if form.ticker == "CMT":
-        show_hist_trade(form)
+    # for i in range(4000, 10000, 100):
+    #     print(i)
+    #     show_hist_trade(forms[i], (30, 100))
+
+    show_hist_trade(forms[100], (30, 100))
 
     #NOTE: trade volume falls off as a predictor of profitability near 1 million shares because those big trades
     #      attract the attention of the SEC. Thus, a multi million share trade likely won't be acting on some really 

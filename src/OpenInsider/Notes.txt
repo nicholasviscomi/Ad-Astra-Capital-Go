@@ -1,0 +1,29 @@
+Manually Checking the Profit Calculations for the Forms
+
+Note: I might be able to fix this by training models with different profit
+      calculations and just picking the highest accuracy model
+
+100, QNBC: first peak makes it seem pretty bad but it isn't
+
+4300 made me realize that a very valuable heuristic might be something about where to set your profit goal to
+      --> perhaps this could be the output of the neural net. In this example, you could easily get a 20% win
+          but if you stayed too long it would be a massive loss.
+(same for 4400, 4500, 4600, 4900, 5000, 5200, 5400, 5600, 5700)
+
+6600, NOVA: need to update the profit function, such that if the stock goes down 5% before reaching a peak it's 
+            considered a 5% loss, regardless of how big the peak is
+
+4300, BCOW: perhaps do some analysis on the base of the peak (find peak width in properties???). For example,
+            if a peak has a steep, lasting decline after the peak, the profit needs to reflect that
+
+4400, WTI: 32% profit to the top of the peak, but there is a steep decline thereafter. Not sure whether this should be
+           penalized in the profit calculations or not. When trading, I will be using a stop loss, so when the profit
+           reaches a certain threshold, any subsequent drop will cancel the trade. Thus, perhaps the profit of this trade
+           should be the peak minus 5% because of the major dropoff (change profit calculations, not get_peaks)
+
+- perhaps these calculations are just meant to show the potential a trade has. The point of this NN is to find when an 
+  insider transaction is likely leading to a catalyst, so maybe the catalyst size is a valid metric. It certainly should
+  NOT be the profit calculation, however.
+      --> get_peaks as of now is good for quantifying catalyst size but not realistic profit
+
+5600, TMP: days_before_catalyst could also be a very good metric. If it has been a month with no rise, maybe exit 
