@@ -145,25 +145,40 @@ class Trade:
     form: Form
     candles: list[Candle]
 
-    def calc_profit(self, n_days, shift):
+    def calc_profit(self, shift):
         """
+        NOTE: candles[0] needs to be at the filing date, and candles[-1] should be the final day\n
         @param n_days is how many days after the filing date the calculations should consider\n
         @param shift is how many days each peak should be shifted to the right by
         """
         avg_peak_val: float = 0.0
 
-        closes = [c.c for c in self.candles[:n_days]]
+        closes = [c.c for c in self.candles]
         _, peaks = get_peaks(closes, shift)
         
         if len(peaks) != 0:
             for peak in peaks:
                 avg_peak_val += self.candles[peak].c
+                print(f"{self.candles[peak].c}, {peak}")
             avg_peak_val /= len(peaks)
-
+            print(f"AVG PEAK: {avg_peak_val}")
+            print(f"First Close: {self.candles[0].c}")
             return pct_change(self.candles[0].c, avg_peak_val)
         
         # if there are no peaks (sad face), return absolute change
         return pct_change(closes[0], closes[-1])
+    
+    def prior_returns(self, days: int):
+        """
+        Percent return over the past (@param days) number of days from close to close\n
+        Used to check the passivity of a certain transaction
+        """
+        if self.form.ticker is None: return
+        data = get_ticker_data(self.form.ticker)
+        if data is None: return
+        data = trim_ticker_data(data, self.form.fd_index(), (days, self.form.fd_index()))
+    
+        return pct_change(data[0].c, data[-1].c)
 
 
 def get_trades_from_data(forms: list[Form]):
@@ -306,7 +321,7 @@ def get_peaks(price_data: list, shift: int):
 
     return ma, peaks
 
-def show_trade(trade: Trade, show_peaks: bool, fd_index: Optional[int] = None):
+def show_trade(trade: Trade, show_peaks: bool):
     prices = pd.DataFrame({
         "high"  : [candle.h  for candle in trade.candles],
         "low"   : [candle.l  for candle in trade.candles],
@@ -332,12 +347,10 @@ def show_trade(trade: Trade, show_peaks: bool, fd_index: Optional[int] = None):
         ax.plot(ma)
         
         for peak in peaks:
-            ax.plot(peak, ma[peak], "bo")
+            ax.plot(peak, list(prices.close.array)[peak], "bo")
 
-    if fd_index is not None:
-        ax.plot(fd_index, ma[fd_index], "ro")
 
-    title = f"{trade.form.ticker} @ {trade.candles[0].date} (FD: {trade.form.filing_date}) Profit = {trade.calc_profit(100, 2):.2f}%"
+    title = f"{trade.form.ticker} @ {trade.candles[0].date} (FD: {trade.form.filing_date}) Catalyst = {trade.calc_profit(3):.2f}%"
     ax.set_title(title)
     plt.show()
 
@@ -502,11 +515,17 @@ def get_ticker_data(ticker: str):
     if f"{ticker}.pkl" not in contents: return None
     else: return load_data(f"Historical_Stock_Data/{ticker}")
 
-def show_hist_trade(form: Form, window: tuple[int, int]):
+def trim_ticker_data(data: list[Candle], fd_index: int, window: tuple[int, int]):
     """
     @param window is a tuple of how many candles should be included before and after the filing date\n
     \t --> i.e. (10, 100) means to show from 10 days before to 100 days after
     """
+    start = fd_index - window[0] if fd_index - window[0] >= 0 else 0
+    end = fd_index + window[1] if fd_index + window[1] < len(data) else len(data) - 1
+    data = data[start : end]
+    return data
+
+def show_hist_trade(form: Form, n_days: int):
     if form.ticker is None: return
     if form.filing_date is None: return
 
@@ -514,25 +533,21 @@ def show_hist_trade(form: Form, window: tuple[int, int]):
     if data is None: return
 
     i = form.fd_index()
-
-    start = i - window[0] if i - window[0] >= 0 else 0
-    end = i + window[1] if i + window[1] < len(data) else len(data) - 1
-    print(f"{start} --> {end} ({len(data)}, {i})")
-    data = data[start : end]
+    data = data[i:i + n_days]
 
     show_trade(Trade(
         form,
         data
-    ), True, fd_index=window[0])
+    ), True)
 
 if __name__ == "__main__":
     forms: list[Form] = load_data("HistForms")
 
-    # for i in range(4000, 10000, 100):
-    #     print(i)
-    #     show_hist_trade(forms[i], (30, 100))
+    for i in range(4000, 4200, 100):
+        print(i)
+        show_hist_trade(forms[i], 100)
 
-    show_hist_trade(forms[100], (30, 100))
+    # show_hist_trade(forms[100], window=(90, 300))
 
     #NOTE: trade volume falls off as a predictor of profitability near 1 million shares because those big trades
     #      attract the attention of the SEC. Thus, a multi million share trade likely won't be acting on some really 
