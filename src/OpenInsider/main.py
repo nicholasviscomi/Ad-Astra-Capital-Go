@@ -179,13 +179,13 @@ class Trade:
         if data is None: return
 
         if days < 0:
-            data = trim_ticker_data(data, self.form.fd_index(), (days, 0))
+            data = trim_ticker_data(data, self.form.fd_index(), (-days, 1))
         elif days > 0:
             data = trim_ticker_data(data, self.form.fd_index(), (0, days))
+        else: return 0
 
         print(data[0])
         print(data[-1])
-
         return pct_change(data[0].c, data[-1].c)
 
 
@@ -558,7 +558,7 @@ def show_hist_trade(form: Form, n_days: int):
     if data is None: return
 
     i = form.fd_index()
-    data = data[i:i + n_days]
+    data = data[i : i + n_days]
 
     trade = Trade(
         form,
@@ -573,12 +573,13 @@ if __name__ == "__main__":
     forms: list[Form] = load_data("HistForms")
 
     print(forms[1000])
-    trade = show_hist_trade(forms[1000], 100)
+    trade = trade_from_histform(forms[1000], 100)
     if trade is not None:
         print(trade.candles[0].c)
         print(f"30: {trade.returns(30)}")
         print(f"60: {trade.returns(60)}")
         print(f"90: {trade.returns(90)}")
+        print(f"-30: {trade.returns(-30)}")
 
     # show_hist_trade(forms[100], window=(90, 300))
 
