@@ -145,7 +145,7 @@ class Trade:
     form: Form
     candles: list[Candle]
 
-    def calc_profit(self, shift):
+    def catalyst_size(self, shift):
         """
         NOTE: candles[0] needs to be at the filing date, and candles[-1] should be the final day\n
         @param n_days is how many days after the filing date the calculations should consider\n
@@ -159,25 +159,33 @@ class Trade:
         if len(peaks) != 0:
             for peak in peaks:
                 avg_peak_val += self.candles[peak].c
-                print(f"{self.candles[peak].c}, {peak}")
+                # print(f"{self.candles[peak].c}, {peak}")
             avg_peak_val /= len(peaks)
-            print(f"AVG PEAK: {avg_peak_val}")
-            print(f"First Close: {self.candles[0].c}")
+            # print(f"AVG PEAK: {avg_peak_val}")
+            # print(f"First Close: {self.candles[0].c}")
             return pct_change(self.candles[0].c, avg_peak_val)
         
         # if there are no peaks (sad face), return absolute change
         return pct_change(closes[0], closes[-1])
     
-    def prior_returns(self, days: int):
+    def returns(self, days: int):
         """
-        Percent return over the past (@param days) number of days from close to close\n
-        Used to check the passivity of a certain transaction
+        Percent return over (@param days) number of days from close to close\n
+        Negative days shows past returns up to the filing date\n
+        Used to check the passivity of a certain transaction\n
         """
         if self.form.ticker is None: return
         data = get_ticker_data(self.form.ticker)
         if data is None: return
-        data = trim_ticker_data(data, self.form.fd_index(), (days, self.form.fd_index()))
-    
+
+        if days < 0:
+            data = trim_ticker_data(data, self.form.fd_index(), (days, 0))
+        elif days > 0:
+            data = trim_ticker_data(data, self.form.fd_index(), (0, days))
+
+        print(data[0])
+        print(data[-1])
+
         return pct_change(data[0].c, data[-1].c)
 
 
@@ -350,7 +358,7 @@ def show_trade(trade: Trade, show_peaks: bool):
             ax.plot(peak, list(prices.close.array)[peak], "bo")
 
 
-    title = f"{trade.form.ticker} @ {trade.candles[0].date} (FD: {trade.form.filing_date}) Catalyst = {trade.calc_profit(3):.2f}%"
+    title = f"{trade.form.ticker} @ {trade.candles[0].date} (FD: {trade.form.filing_date}) Catalyst = {trade.catalyst_size(3):.2f}%"
     ax.set_title(title)
     plt.show()
 
@@ -525,6 +533,23 @@ def trim_ticker_data(data: list[Candle], fd_index: int, window: tuple[int, int])
     data = data[start : end]
     return data
 
+def trade_from_histform(form: Form, n_days):
+    if form.ticker is None: return
+    if form.filing_date is None: return
+
+    data = get_ticker_data(form.ticker)
+    if data is None: return
+
+    i = form.fd_index()
+    data = data[i:i + n_days]
+
+    trade = Trade(
+        form,
+        data
+    )
+
+    return trade
+
 def show_hist_trade(form: Form, n_days: int):
     if form.ticker is None: return
     if form.filing_date is None: return
@@ -535,17 +560,25 @@ def show_hist_trade(form: Form, n_days: int):
     i = form.fd_index()
     data = data[i:i + n_days]
 
-    show_trade(Trade(
+    trade = Trade(
         form,
         data
-    ), True)
+    )
+
+    show_trade(trade, True)
+
+    return trade
 
 if __name__ == "__main__":
     forms: list[Form] = load_data("HistForms")
 
-    for i in range(4000, 4200, 100):
-        print(i)
-        show_hist_trade(forms[i], 100)
+    print(forms[1000])
+    trade = show_hist_trade(forms[1000], 100)
+    if trade is not None:
+        print(trade.candles[0].c)
+        print(f"30: {trade.returns(30)}")
+        print(f"60: {trade.returns(60)}")
+        print(f"90: {trade.returns(90)}")
 
     # show_hist_trade(forms[100], window=(90, 300))
 
