@@ -1,2 +1,30 @@
 OpenInsider Neural Network Design
 
+***
+PREREQUISITE QUESTIONS
+
+? After how many days of stagnation (defined as movement within ±2%) should the trade be exited, if at all
+? When there is a catalyst, where should the stop-loss be placed to guard against sudden price drop offs
+
+***
+
+GOAL: Given the details of a transaction from an insider, predict whether the stock is likely to be profitable
+
+INPUTS:
+- n shares bought
+- price per share
+- % change in ownership
+- firm size would be great to have
+- insider title (CEO, CFO, 10%, etc.)
+- passivity of the trade (whether prior stock returns are down or or up)
+- cluster buying (whether multiple insiders are buying around the same time)
+    - only a positive indicator: its presence is good; its absence has no meaning
+- insider's track record with buying
+- days between filing and trading
+
+IDEAS FOR OUTPUTS:
+
+Simple:
+    - will be winning (perhaps defined as +3%?)
+    - will be losing
+  * will simply light up a node as a prediction of likely profit or loss
