@@ -603,10 +603,12 @@ def show_hist_trade(form: Form, n_days: int):
 if __name__ == "__main__":
     forms: list[Form] = load_data("HistForms")
 
-    for f in forms[0:10]:
+    l = len(forms)
+    for i, f in enumerate(forms):
+        print(f"{i}/{l}", end='\r')
         f.fd_index = f.get_fd_index()
 
-    print(forms[0].fd_index)
+    save_data(forms, "HistForms")
     # trades: list[Trade] = []
     # for form in forms:
     #     t = trade_from_histform(form, 100)
