@@ -193,8 +193,8 @@ class Trade:
         else: 
             data = candles
 
-        fdi = self.form.get_fd_index()
-        if fdi == -1: 
+        fdi = self.form.fd_index
+        if fdi is None: 
             print("❌FDI NOT FOUND")
             return 0
 
@@ -563,8 +563,8 @@ def trade_from_histform(form: Form, n_days):
     data = get_ticker_data(form.ticker)
     if data is None: return
 
-    i = form.get_fd_index()
-    if i == -1: 
+    i = form.fd_index
+    if i is None: 
         print("❌FDI NOT FOUND")
         return
 
@@ -584,8 +584,8 @@ def show_hist_trade(form: Form, n_days: int):
     data = get_ticker_data(form.ticker)
     if data is None: return
 
-    i = form.get_fd_index()
-    if i == -1: 
+    i = form.fd_index
+    if i is None: 
         print("❌FDI NOT FOUND")
         return
 
@@ -603,12 +603,6 @@ def show_hist_trade(form: Form, n_days: int):
 if __name__ == "__main__":
     forms: list[Form] = load_data("HistForms")
 
-    l = len(forms)
-    for i, f in enumerate(forms):
-        print(f"{i}/{l}", end='\r')
-        f.fd_index = f.get_fd_index()
-
-    save_data(forms, "HistForms")
     # trades: list[Trade] = []
     # for form in forms:
     #     t = trade_from_histform(form, 100)
