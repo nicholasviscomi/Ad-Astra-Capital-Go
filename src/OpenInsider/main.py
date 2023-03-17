@@ -75,8 +75,6 @@ class Form:
         except ValueError:
             return -1
     
-
-
 def get_data(n_pages) -> list[Form]:
     forms = []
     for page_number in range(1, n_pages + 1): # plus one because upper range is not inclusive 
@@ -207,7 +205,6 @@ class Trade:
         print(data[0])
         print(data[-1])
         return pct_change(data[0].c, data[-1].c)
-
 
 def get_trades_from_data(forms: list[Form]):
     trades = []
@@ -383,6 +380,10 @@ def show_trade(trade: Trade, show_peaks: bool):
     plt.show()
 
 def parse_historical_filings() -> dict[str, Form]:
+    """
+    loop through the files in the folders in HistoricalSECFilings/Assets and parse the data
+    into a dictionary of {unique ID : Form}
+    """
     base = "src/OpenInsider/Assets/Historical_SEC_Filings"
     folders = os.listdir(base)
 
@@ -456,7 +457,7 @@ def parse_historical_filings() -> dict[str, Form]:
         print(f"{fail_count} Failures")
         
     return forms
-    
+
 def clean_historical_forms(forms: list[Form]) -> list[Form]:
     """
     -remove all special characters from the tickers\n
@@ -479,6 +480,9 @@ def clean_historical_forms(forms: list[Form]) -> list[Form]:
     return cleaned
 
 def get_historical_data(tickers: list[str]):
+    """
+    request 5yrs of data from NASDAQ api and save to a pkl file where the name is the ticker
+    """
     for ticker in tickers:
         to_date = dt.today()
         url = f"https://api.nasdaq.com/api/quote/{ticker}/historical?assetclass=stocks&fromdate=2018-03-14&limit=9999&todate={date(to_date.year, to_date.month, to_date.day)}"
@@ -539,6 +543,10 @@ def get_historical_data(tickers: list[str]):
             pass
 
 def get_ticker_data(ticker: str):
+    """
+    open and return the data associated with a certain ticker\n
+    returns None is no data are found
+    """
     contents = os.listdir(f"src/OpenInsider/Assets/Historical_Stock_Data")
     if f"{ticker}.pkl" not in contents: return None
     else: return load_data(f"Historical_Stock_Data/{ticker}")
