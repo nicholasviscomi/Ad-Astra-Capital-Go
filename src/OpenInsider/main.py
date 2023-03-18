@@ -9,7 +9,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 import numpy as np
-import network as NN
 import os
 import csv
 
@@ -55,25 +54,6 @@ class Form:
         fd = dt.strptime(self.filing_date, "%Y-%m-%d")
         td = dt.strptime(self.trade_date,  "%Y-%m-%d")
         return (fd - td).days
-    
-    def get_fd_index(self, ) -> int:
-        """
-        - returns the index of the filing date within the Historical Stock Data\n
-        - returns -1 if anything fails (i.e. there is no data available)
-        """
-        if self.ticker is None or self.filing_date is None: return -1
-
-        data = get_ticker_data(self.ticker)
-        if data is None: return -1
-
-        dates = [candle.date for candle in data]
-        fd_components = self.filing_date.replace("-", "/").split("/")
-
-        new_date = f"{fd_components[1]}/{fd_components[2]}/{fd_components[0]}"
-        try:
-            return dates.index(new_date)
-        except ValueError:
-            return -1
     
 def get_data(n_pages) -> list[Form]:
     forms = []
@@ -181,7 +161,7 @@ class Trade:
         """
         if days > 0:
             if len(self.candles) > days:
-                return pct_change(self.candles[0], self.candles[days - 1])
+                return pct_change(self.candles[0].c, self.candles[days - 1].c)
             
         data = []
         if len(candles) == 0:
@@ -202,8 +182,6 @@ class Trade:
             data = trim_ticker_data(data, fdi, (0, days))
         else: return 0
 
-        print(data[0])
-        print(data[-1])
         return pct_change(data[0].c, data[-1].c)
 
 def get_trades_from_data(forms: list[Form]):
@@ -367,15 +345,16 @@ def show_trade(trade: Trade, show_peaks: bool):
     ax.bar(red.index, red.high  - red.open, w2, red.open, color='black') # high price
     ax.bar(red.index, red.low   - red.close, w2, red.close, color='black') # low price
 
-    ma, peaks = get_peaks(list(prices.close.array), 3)
     if show_peaks:
+        ma, peaks = get_peaks(list(prices.close.array), 3)
         ax.plot(ma)
         
         for peak in peaks:
             ax.plot(peak, list(prices.close.array)[peak], "bo")
 
 
-    title = f"{trade.form.ticker} @ {trade.candles[0].date} (FD: {trade.form.filing_date}) Catalyst = {trade.catalyst_size(3):.2f}%"
+    title = f"{trade.form.ticker} @ {trade.candles[0].date} (FD: {trade.form.filing_date}, TD: {trade.form.trade_date})"
+
     ax.set_title(title)
     plt.show()
 
@@ -585,7 +564,7 @@ def trade_from_histform(form: Form, n_days):
 
     return trade
 
-def show_hist_trade(form: Form, n_days: int):
+def show_hist_trade(form: Form, n_days: int, show_peaks: bool):
     if form.ticker is None: return
     if form.filing_date is None: return
 
@@ -604,27 +583,26 @@ def show_hist_trade(form: Form, n_days: int):
         data
     )
 
-    show_trade(trade, True)
+    show_trade(trade, show_peaks)
 
     return trade
 
 if __name__ == "__main__":
     forms: list[Form] = load_data("HistForms")
 
-    # trades: list[Trade] = []
-    # for form in forms:
-    #     t = trade_from_histform(form, 100)
-    #     if t is not None:
-    #         trades.append(t)
+    l = len(forms)
+    trades: list[Trade] = []
+    for i, form in enumerate(forms):
+        print(f"{i/(l - 1)*100:.2f}%", end='\r')
+        t = trade_from_histform(form, 100)
+        if t is not None:
+            trades.append(t)
 
-    # for i in range(len(trades)):
-    #     trades[i].onem_profit   = trades[i].returns(30)
-    #     trades[i].twom_profit   = trades[i].returns(60)
-    #     trades[i].threem_profit = trades[i].returns(90)
+    trades = list(filter(lambda x: len(x.candles) > 0 and x.candles is not None, trades)) # filter such that...
+    # highest profit first
+    trades = list(sorted(trades, key=lambda x: sum_([x.returns(30), x.returns(60), x.returns(90)])/3, reverse=True))
 
-    # trades = list(filter(lambda x: sum_([x.onem_profit, x.twom_profit, x.threem_profit]), trades))
-    # show_hist_trade(trades[0].form, 100)
-
+    show_hist_trade(trades[0].form, 100, False)
 
     # show_hist_trade(forms[100], window=(90, 300))
 

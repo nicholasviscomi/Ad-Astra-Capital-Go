@@ -10,9 +10,10 @@ PREREQUISITE QUESTIONS
 
 GOAL: Given the details of a transaction from an insider, predict whether the stock is likely to be profitable
 
+#### SIMPLE NN ####
 INPUTS:
 - n shares bought
-- price per share
+- price per share (should likely act as an alternative to firm size)
 - % change in ownership
 - firm size would be great to have
 - insider title (CEO, CFO, 10%, etc.)
@@ -21,6 +22,11 @@ INPUTS:
     - only a positive indicator: its presence is good; its absence has no meaning
 - insider's track record with buying
 - days between filing and trading
+- insider track record
+    --> average trade result @ 30, 60, 90 days
+    --> number of wins
+    --> number of losses
+- company track record
 
 IDEAS FOR OUTPUTS:
 
@@ -28,3 +34,20 @@ Simple:
     - will be winning (perhaps defined as +3%?)
     - will be losing
   * will simply light up a node as a prediction of likely profit or loss
+
+Profit: (best idea so far)
+    - multiple nodes for different ranges of profit and loss
+        --> >10% loss, 5-10% loss, 0-5% loss, 0-5% win, 5-10% win, >10% win
+            ? pick these bounds by looking a graph of the profits in the training data
+
+(I actually don't think any fancy kind of neural network will be needed for form classification...)
+#### LSTM NN ####
+Use a long short term memory neural network structure to predict profit of a transaction?
+    ! the whole point of this network is looking at past trends and having memory (hence the name)
+      so it wouldn't be good for form classification
+
+LSTM could be great for looking at pasivity of the stocks previous returns and being added to the main NN
+
+****
+Perhaps a network that is like both a feed-forward and LSTM, where it takes 3 months of previous data and then 
+looks at the form and makes its profit prediction
