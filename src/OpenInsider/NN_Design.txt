@@ -18,7 +18,7 @@ INPUTS:
 [ ] insider title (CEO, CFO, 10%, etc.)
     --> map each title to a number
 [x] passivity of the trade (whether prior stock returns are down or or up)
-[ ] cluster buying (number of insiders buying around the same time)
+[x] cluster buying (number of insiders buying around the same time)
     NOTE: should only be a positive indicator: its presence is good; its absence has no meaning
 [x] days between filing and trading
 [x] insider track record
