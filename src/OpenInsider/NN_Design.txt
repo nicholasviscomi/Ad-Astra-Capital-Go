@@ -30,9 +30,10 @@ INPUTS:
 
 OUTPUTS:
 
-Profit Ranges: (best idea so far)
+Profit Ranges:
     - one node for stagnation (±1%) and then a node for each quartile of the profit distribution 
     - node for outliers in each direction
+    (see analysis.ipynb for exact values)
 
 POTENTIAL SOURCES OF ERROR:
 - cluster buying acting as a negative indicator
