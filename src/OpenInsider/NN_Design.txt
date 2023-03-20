@@ -15,7 +15,7 @@ INPUTS:
 [x] n shares bought
 [x] price per share (should likely act as an alternative to firm size)
 [x] % change in ownership
-[ ] insider title (CEO, CFO, 10%, etc.)
+[x] insider title (CEO, CFO, 10%, etc.)
     --> map each title to a number
 [x] passivity of the trade (whether prior stock returns are down or or up)
 [x] cluster buying (number of insiders buying around the same time)
