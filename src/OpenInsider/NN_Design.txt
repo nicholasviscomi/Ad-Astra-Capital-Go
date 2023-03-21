@@ -42,3 +42,16 @@ POTENTIAL SOURCES OF ERROR:
 - defining cluster buying as trades from the same company within 30 days 
     ? too small, too big, who knows
 - choosing average of the 30, 60, 90 day returns. Maybe just try each one by itself 
+
+
+MODEL STRUCTURES:
+
+First:
+    - 8 inputs with returns(90) used
+    - output layer is Dense, no activation
+    - ~45% accuracy
+Second:
+    - same with little higher accuracy
+Third:
+    - same but with softmax activation on last layer
+    - ~55% accuracy
