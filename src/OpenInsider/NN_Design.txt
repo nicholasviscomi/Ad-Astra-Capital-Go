@@ -41,3 +41,4 @@ POTENTIAL SOURCES OF ERROR:
     ? If filing date is way after, it might screw everything up
 - defining cluster buying as trades from the same company within 30 days 
     ? too small, too big, who knows
+- choosing average of the 30, 60, 90 day returns. Maybe just try each one by itself 
