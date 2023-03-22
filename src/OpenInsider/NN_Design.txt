@@ -79,4 +79,8 @@ NormData:
     - tanh for hidden, softmax for output
     - normalized data (via Normalizer().fit_transform())
 
+(Norm-)150tanh-10relu-3(-7):
+    - all have 3 outputs, for profit, stagnation (±1%), and loss
+    ~50% accuracy across the board
+
 ---------------------------------------------------------------
