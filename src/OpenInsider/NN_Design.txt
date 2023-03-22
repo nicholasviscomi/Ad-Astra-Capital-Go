@@ -42,10 +42,24 @@ POTENTIAL SOURCES OF ERROR:
 - defining cluster buying as trades from the same company within 30 days 
     ? too small, too big, who knows
 - choosing average of the 30, 60, 90 day returns. Maybe just try each one by itself 
+- might be looking at insiders future trades when looking through i_dict[name]
 
 
 MODEL STRUCTURES:
 
+NOTES:
+    -relu doesn't work on the unmodified inputs because the numbers stay too big
+    -relu and tanh are equivalent on normalized data
+
+Data Schema:----------------------------------------------------
+    - Number of shares bought
+    - Price per share
+    - Percent change in ownership
+    - Insider position (Director, President, etc.)
+    - Previous 30 day returns
+    - Cluster score
+    - Days between filing and trading
+    - Average profit of insider's previous transactions
 First:
     - 8 inputs with returns(90) used
     - output layer is Dense, no activation
@@ -55,3 +69,12 @@ Second:
 Third:
     - same but with softmax activation on last layer
     - ~55% accuracy
+    
+    MeanSquaredLogarithmicError
+
+NormData:
+    - (8, 150, 100, 7)
+    - tanh for hidden, softmax for output
+    - normalized data (via Normalizer().fit_transform())
+
+---------------------------------------------------------------
