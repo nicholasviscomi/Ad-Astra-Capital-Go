@@ -35,6 +35,8 @@ Profit Ranges:
     - node for outliers in each direction
     (see analysis.ipynb for exact values)
 
+- could also try hacing 3 outputs: >2% profit, 0-2%, <0%
+
 POTENTIAL SOURCES OF ERROR:
 - cluster buying acting as a negative indicator
 - defining cluster buying by the difference between trade date
