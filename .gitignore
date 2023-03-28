@@ -6,3 +6,4 @@ historical_data/**
 src/OpenInsider/Assets/Historical_SEC_Filings
 src/OpenInsider/Assets/Historical_Stock_Data
 src/OpenInsider/Assets/Trades.pkl
+src/OpenInsider/Assets/DataFrame.csv
