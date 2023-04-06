@@ -1,0 +1,36 @@
+Neural Network Design
+
+INPUTS:
+    - n shares bought
+        - 5 nodes
+            1) lower outlier
+            2) Q1 - min 
+            3) IQR
+            4) Q3 - max
+            5) upper outlier
+
+    - price per share (should likely act as an alternative to firm size)
+        - 5 nodes (same schema)
+
+    - % change in ownership
+        - 5 nodes (same schema)
+
+    - insider title (CEO, CFO, 10%, etc.)
+        --> map each title to a number
+        - 4 nodes for other, 10%, director, officer
+
+    - passivity of the trade (whether prior stock returns are down or or up)
+        - returns(-30)
+        - 5 nodes (same schema)
+
+    - cluster buying (number of insiders buying around the same time)
+        
+    - days between filing and trading
+
+    ????
+    - insider track record
+        - average trade result @ 30, 60, 90 days
+        - number of wins
+        - average win
+        - number of losses
+        - average loss
