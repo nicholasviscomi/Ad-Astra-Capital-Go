@@ -3,11 +3,11 @@ Neural Network Design
 INPUTS:
     - n shares bought
         - 5 nodes
-            1) lower outlier
+            1) <lower outlier
             2) Q1 - min 
             3) IQR
             4) Q3 - max
-            5) upper outlier
+            5) >upper outlier
 
     - price per share (should likely act as an alternative to firm size)
         - 5 nodes (same schema)
@@ -23,14 +23,24 @@ INPUTS:
         - returns(-30)
         - 5 nodes (same schema)
 
-    - cluster buying (number of insiders buying around the same time)
+    ? cluster buying (number of insiders buying around the same time)
+        - no trend established, so probably won't be used
+        - could test out adding this in the future
         
-    - days between filing and trading
+    ? days between filing and trading
+        - never tested
+        - perhaps try adding
 
-    ????
-    - insider track record
-        - average trade result @ 30, 60, 90 days
-        - number of wins
-        - average win
-        - number of losses
-        - average loss
+
+
+MEGA BRAIN MASSIVE MONEY MAKING MONEY PRINTER IDEA:
+
+Presumption: the NN I just created is pretty good; in specific, I'm assuming that the idea of using one-hot encoded values
+as inputs instead of raw values works
+
+I chose to use 25, 50, 75 percentiles as the ranges, but what if I had the NN learn what the optimal ranges are? This
+could be similar to a GAN in the sense that it starts off random and gets better by being discriminated against.
+In this case, the percentile values will start at 25, 50, 75, which is a pretty reasonable start point. Then they can
+be tweaked to find the optimal values. 
+
+Or maybe this will take years of computation for no truly good result. Not sure
