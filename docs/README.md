@@ -1,8 +1,3 @@
-# Analysis of Asset Trading Strategies
-## Status: In development
-### Language: Python
+# Analysis of SEC Filings and Various Backtesting
 
-
-#### Developer & Founder: Nick Viscomi
-
-
+This repo is a conglomerate of my deep interest in financial markets and using computation to derive patterns and insights. I backtested strategies on Bitcoin and wrote a bot that I deployed on AWS to test out my strategies on paper money (different repo). I analyzed thousands of SEC form 4 filings in conjunction with price data to see if predictable wins could be found by following **legal** insider trading. I used deep learning techniques to try and forecast price data based on activity within a company. Overall, lots of data processing, analysis, and visualization
